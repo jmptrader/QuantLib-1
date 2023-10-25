@@ -90,14 +90,26 @@ namespace QuantLib {
 
     
     // Helper class used by unit tests
-    class AbcdSquared : public std::unary_function<Real,Real> {
+    class AbcdSquared {
       
       public:
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real argument_type;
+
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real result_type;
+
         AbcdSquared(Real a, Real b, Real c, Real d, Time T, Time S);
         Real operator()(Time t) const;
       
       private:
-        boost::shared_ptr<AbcdFunction> abcd_;
+        ext::shared_ptr<AbcdFunction> abcd_;
         Time T_, S_;
     };
 

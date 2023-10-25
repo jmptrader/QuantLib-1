@@ -31,8 +31,26 @@
 namespace QuantLib {
 
     //! Ali-Mikhail-Haq copula
-    class AliMikhailHaqCopula : public std::binary_function<Real,Real,Real> {
+    class AliMikhailHaqCopula {
       public:
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real first_argument_type;
+
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real second_argument_type;
+
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real result_type;
+
         AliMikhailHaqCopula(Real theta);
         Real operator()(Real x, Real y) const;
       private:

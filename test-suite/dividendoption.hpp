@@ -21,6 +21,7 @@
 #define quantlib_test_dividend_option_hpp
 
 #include <boost/test/unit_test.hpp>
+#include "speedlevel.hpp"
 
 /* remember to document new and/or updated tests in the Doxygen
    comment block of the corresponding class */
@@ -31,13 +32,18 @@ class DividendOptionTest {
     static void testEuropeanKnownValue();
     static void testEuropeanStartLimit();
     static void testEuropeanEndLimit();
+    static void testOldEuropeanGreeks();
     static void testEuropeanGreeks();
     static void testFdEuropeanValues();
     static void testFdEuropeanGreeks();
     static void testFdAmericanGreeks();
     static void testFdEuropeanDegenerate();
     static void testFdAmericanDegenerate();
-    static boost::unit_test_framework::test_suite* suite();
+    static void testFdEuropeanWithDividendToday();
+    static void testFdAmericanWithDividendToday();
+    static void testEscrowedDividendModel();
+
+    static boost::unit_test_framework::test_suite* suite(SpeedLevel);
 };
 
 

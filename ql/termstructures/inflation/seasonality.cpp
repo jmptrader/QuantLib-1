@@ -32,13 +32,10 @@ namespace QuantLib {
 
 
     //Multiplicative Seasonality on price = on CPI/RPI/HICP/etc
-    //
-    MultiplicativePriceSeasonality::MultiplicativePriceSeasonality() {
-    }
-
 
     void MultiplicativePriceSeasonality::validate() const
     {
+        // NOLINTBEGIN(clang-analyzer-optin.cplusplus.VirtualCall)
         switch (this->frequency()) {
             case Semiannual:        //2
             case EveryFourthMonth:  //3
@@ -48,6 +45,7 @@ namespace QuantLib {
             case Biweekly:          // etc.
             case Weekly:
             case Daily:
+                QL_REQUIRE(!this->seasonalityFactors().empty(), "no seasonality factors given");
                 QL_REQUIRE( (this->seasonalityFactors().size() %
                              this->frequency()) == 0,
                            "For frequency " << this->frequency()
@@ -59,6 +57,7 @@ namespace QuantLib {
                         << ", only semi-annual through daily permitted.");
             break;
         }
+        // NOLINTEND(clang-analyzer-optin.cplusplus.VirtualCall)
     }
 
 
@@ -90,13 +89,13 @@ namespace QuantLib {
 
 
     MultiplicativePriceSeasonality::MultiplicativePriceSeasonality(const Date& seasonalityBaseDate, const Frequency frequency,
-                                                                   const std::vector<Rate> seasonalityFactors)
+                                                                   const std::vector<Rate>& seasonalityFactors)
     {
-        set(seasonalityBaseDate, frequency, seasonalityFactors);
+        MultiplicativePriceSeasonality::set(seasonalityBaseDate, frequency, seasonalityFactors);
     }
 
     void MultiplicativePriceSeasonality::set(const Date& seasonalityBaseDate, const Frequency frequency,
-                                             const std::vector<Rate> seasonalityFactors)
+                                             const std::vector<Rate>& seasonalityFactors)
     {
         frequency_ = frequency;
         seasonalityFactors_ = std::vector<Rate>(seasonalityFactors.size());
@@ -104,6 +103,7 @@ namespace QuantLib {
             seasonalityFactors_[i] = seasonalityFactors[i];
         }
         seasonalityBaseDate_ = seasonalityBaseDate;
+        // NOLINTNEXTLINE(clang-analyzer-optin.cplusplus.VirtualCall)
         validate();
     }
 
@@ -123,9 +123,13 @@ namespace QuantLib {
     Rate MultiplicativePriceSeasonality::correctZeroRate(const Date &d,
                                                          const Rate r,
                                                          const InflationTermStructure& iTS) const {
-        std::pair<Date,Date> lim = inflationPeriod(iTS.baseDate(), iTS.frequency());
-        Date curveBaseDate = lim.second;
-        return seasonalityCorrection(r, d, iTS.dayCounter(), curveBaseDate, true);
+        // Mimic the logic in ZeroInflationIndex::forecastFixing for choosing the
+        // curveBaseDate and effective fixing date. This means that we should retrieve
+        // the input seasonality adjustments when we look at I_{SA}(t) / I_{NSA}(t).
+        Date curveBaseDate = iTS.baseDate();
+        Date effectiveFixingDate = inflationPeriod(d, iTS.frequency()).first;
+        
+        return seasonalityCorrection(r, effectiveFixingDate, iTS.dayCounter(), curveBaseDate, true);
     }
 
 
@@ -200,7 +204,8 @@ namespace QuantLib {
         if (isZeroRate) {
             Rate factorBase = this->seasonalityFactor(curveBaseDate);
             Real seasonalityAt = factorAt / factorBase;
-            Time timeFromCurveBase = dc.yearFraction(curveBaseDate, atDate);
+            std::pair<Date,Date> p = inflationPeriod(atDate,frequency());
+            Time timeFromCurveBase = dc.yearFraction(curveBaseDate, p.first);
             f = std::pow(seasonalityAt, 1/timeFromCurveBase);
         }
         else {
@@ -241,7 +246,7 @@ namespace QuantLib {
 
         }
 
-        if (!dir) // invers Factor required
+        if (dir == 0) // invers Factor required
         {
             seasonalCorrection = 1/seasonalCorrection;
         }

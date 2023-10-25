@@ -39,11 +39,18 @@ namespace QuantLib {
     class BjerksundStenslandApproximationEngine
         : public VanillaOption::engine {
       public:
-        BjerksundStenslandApproximationEngine(
-                    const boost::shared_ptr<GeneralizedBlackScholesProcess>&);
-        void calculate() const;
+        BjerksundStenslandApproximationEngine(ext::shared_ptr<GeneralizedBlackScholesProcess>);
+        void calculate() const override;
+
       private:
-        boost::shared_ptr<GeneralizedBlackScholesProcess> process_;
+        OneAssetOption::results americanCallApproximation(
+            Real S, Real X, Real rfD, Real dD, Real variance) const;
+        OneAssetOption::results europeanCallResults(
+            Real S, Real X, Real rfD, Real dD, Real variance) const;
+        OneAssetOption::results immediateExercise(Real S, Real X) const;
+
+
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
     };
 
 }

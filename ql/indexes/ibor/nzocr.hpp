@@ -38,11 +38,10 @@ namespace QuantLib {
     */
     class Nzocr : public OvernightIndex {
       public:
-        Nzocr(const Handle<YieldTermStructure>& h =
-                              Handle<YieldTermStructure>())
-        :OvernightIndex("Nzocr", 0, NZDCurrency(),
-                        NewZealand(),
-                        Actual365Fixed(), h) {}
+        explicit Nzocr(const Handle<YieldTermStructure>& h = {})
+        : OvernightIndex("Nzocr", 0, NZDCurrency(),
+                         NewZealand(),
+                         Actual365Fixed(), h) {}
     };
 
 }

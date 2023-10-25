@@ -28,52 +28,29 @@
    YieldTermStructure.
 */
 
-// the only header you need to use QuantLib
-#include <ql/quantlib.hpp>
-
-#ifdef BOOST_MSVC
-/* Uncomment the following lines to unmask floating-point
-   exceptions. Warning: unpredictable results can arise...
-
-   See http://www.wilmott.com/messageview.cfm?catid=10&threadid=9481
-   Is there anyone with a definitive word about this?
-*/
-// #include <float.h>
-// namespace { unsigned int u = _controlfp(_EM_INEXACT, _MCW_EM); }
+#include <ql/qldefines.hpp>
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
+#  include <ql/auto_link.hpp>
 #endif
+#include <ql/instruments/bondforward.hpp>
+#include <ql/instruments/bonds/fixedratebond.hpp>
+#include <ql/pricingengines/bond/discountingbondengine.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
+#include <ql/time/schedule.hpp>
+#include <ql/time/calendars/nullcalendar.hpp>
+#include <ql/time/daycounters/actual360.hpp>
+#include <ql/time/daycounters/thirty360.hpp>
 
-#include <boost/timer.hpp>
 #include <iostream>
+#include <iomanip>
 
 using namespace std;
 using namespace QuantLib;
-
-#ifdef BOOST_MSVC
-#  ifdef QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN
-#    include <ql/auto_link.hpp>
-#    define BOOST_LIB_NAME boost_system
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#    define BOOST_LIB_NAME boost_thread
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#  endif
-#endif
-
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-    Integer sessionId() { return 0; }
-
-}
-#endif
 
 int main(int, char* []) {
 
     try {
 
-        boost::timer timer;
         std::cout << std::endl;
 
         Date repoSettlementDate(14,February,2000);;
@@ -104,16 +81,14 @@ int main(int, char* []) {
         Settings::instance().evaluationDate() = repoSettlementDate;
 
         RelinkableHandle<YieldTermStructure> bondCurve;
-        bondCurve.linkTo(boost::shared_ptr<YieldTermStructure>(
-                                       new FlatForward(repoSettlementDate,
+        bondCurve.linkTo(ext::make_shared<FlatForward>(repoSettlementDate,
                                                        .01, // dummy rate
                                                        bondDayCountConvention,
                                                        Compounded,
-                                                       bondCouponFrequency)));
+                                                       bondCouponFrequency));
 
         /*
-        boost::shared_ptr<FixedRateBond> bond(
-                       new FixedRateBond(faceAmount,
+        auto bond = ext::make_shared<FixedRateBond>(faceAmount,
                                          bondIssueDate,
                                          bondDatedDate,
                                          bondMaturityDate,
@@ -125,7 +100,7 @@ int main(int, char* []) {
                                          bondBusinessDayConvention,
                                          bondBusinessDayConvention,
                                          bondRedemption,
-                                         bondCurve));
+                                         bondCurve);
         */
 
         Schedule bondSchedule(bondDatedDate, bondMaturityDate,
@@ -133,51 +108,39 @@ int main(int, char* []) {
                               bondCalendar,bondBusinessDayConvention,
                               bondBusinessDayConvention,
                               DateGeneration::Backward,false);
-        boost::shared_ptr<FixedRateBond> bond(
-                       new FixedRateBond(bondSettlementDays,
+        auto bond = ext::make_shared<FixedRateBond>(bondSettlementDays,
                                          faceAmount,
                                          bondSchedule,
                                          std::vector<Rate>(1,bondCoupon),
                                          bondDayCountConvention,
                                          bondBusinessDayConvention,
                                          bondRedemption,
-                                         bondIssueDate));
-        bond->setPricingEngine(boost::shared_ptr<PricingEngine>(
-                                       new DiscountingBondEngine(bondCurve)));
+                                         bondIssueDate);
+        bond->setPricingEngine(ext::make_shared<DiscountingBondEngine>(bondCurve));
 
-        bondCurve.linkTo(boost::shared_ptr<YieldTermStructure> (
-                   new FlatForward(repoSettlementDate,
+        bondCurve.linkTo(ext::make_shared<FlatForward>(repoSettlementDate,
                                    bond->yield(bondCleanPrice,
                                                bondDayCountConvention,
                                                Compounded,
                                                bondCouponFrequency),
                                    bondDayCountConvention,
                                    Compounded,
-                                   bondCouponFrequency)));
+                                   bondCouponFrequency));
 
         Position::Type fwdType = Position::Long;
         double dummyStrike = 91.5745;
 
         RelinkableHandle<YieldTermStructure> repoCurve;
-        repoCurve.linkTo(boost::shared_ptr<YieldTermStructure> (
-                                       new FlatForward(repoSettlementDate,
+        repoCurve.linkTo(ext::make_shared<FlatForward>(repoSettlementDate,
                                                        repoRate,
                                                        repoDayCountConvention,
                                                        repoCompounding,
-                                                       repoCompoundFreq)));
+                                                       repoCompoundFreq));
 
 
-        FixedRateBondForward bondFwd(repoSettlementDate,
-                                     repoDeliveryDate,
-                                     fwdType,
-                                     dummyStrike,
-                                     repoSettlementDays,
-                                     repoDayCountConvention,
-                                     bondCalendar,
-                                     bondBusinessDayConvention,
-                                     bond,
-                                     repoCurve,
-                                     repoCurve);
+        BondForward bondFwd(repoSettlementDate, repoDeliveryDate, fwdType, dummyStrike,
+                            repoSettlementDays, repoDayCountConvention, bondCalendar,
+                            bondBusinessDayConvention, bond, repoCurve, repoCurve);
 
 
         cout << "Underlying bond clean price: "
@@ -238,19 +201,6 @@ int main(int, char* []) {
              << "and 0 settlement days."
              << endl;
 
-
-        double seconds = timer.elapsed();
-        Integer hours = int(seconds/3600);
-        seconds -= hours * 3600;
-        Integer minutes = int(seconds/60);
-        seconds -= minutes * 60;
-        cout << " \nRun completed in ";
-        if (hours > 0)
-            cout << hours << " h ";
-        if (hours > 0 || minutes > 0)
-            cout << minutes << " m ";
-        cout << fixed << setprecision(0)
-             << seconds << " s\n" << endl;
 
         return 0;
 

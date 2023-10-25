@@ -20,48 +20,41 @@
 #include <ql/experimental/averageois/arithmeticoisratehelper.hpp>
 #include <ql/experimental/averageois/makearithmeticaverageois.hpp>
 #include <ql/pricingengines/swap/discountingswapengine.hpp>
-
-using boost::shared_ptr;
+#include <ql/utilities/null_deleter.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    namespace {
-        void no_deletion(YieldTermStructure*) {}
-    }
-
-    ArithmeticOISRateHelper::ArithmeticOISRateHelper(
-                    Natural settlementDays,
-                    const Period& tenor, // swap maturity
-                    Frequency fixedLegPaymentFrequency,
-                    const Handle<Quote>& fixedRate,
-                    const boost::shared_ptr<OvernightIndex>& overnightIndex,
-                    Frequency overnightLegPaymentFrequency,
-                    const Handle<Quote>& spread,
-                    Real meanReversionSpeed,
-                    Real volatility,
-                    bool byApprox,
-                    const Handle<YieldTermStructure>& discount)
-    : RelativeDateRateHelper(fixedRate),
-      settlementDays_(settlementDays), tenor_(tenor),
-      overnightIndex_(overnightIndex), discountHandle_(discount),
+    ArithmeticOISRateHelper::ArithmeticOISRateHelper(Natural settlementDays,
+                                                     const Period& tenor, // swap maturity
+                                                     Frequency fixedLegPaymentFrequency,
+                                                     const Handle<Quote>& fixedRate,
+                                                     ext::shared_ptr<OvernightIndex> overnightIndex,
+                                                     Frequency overnightLegPaymentFrequency,
+                                                     Handle<Quote> spread,
+                                                     Real meanReversionSpeed,
+                                                     Real volatility,
+                                                     bool byApprox,
+                                                     Handle<YieldTermStructure> discount)
+    : RelativeDateRateHelper(fixedRate), settlementDays_(settlementDays), tenor_(tenor),
+      overnightIndex_(std::move(overnightIndex)), discountHandle_(std::move(discount)),
       fixedLegPaymentFrequency_(fixedLegPaymentFrequency),
-      overnightLegPaymentFrequency_(overnightLegPaymentFrequency),
-      spread_(spread), mrs_(meanReversionSpeed), vol_(volatility),
-      byApprox_(byApprox){
+      overnightLegPaymentFrequency_(overnightLegPaymentFrequency), spread_(std::move(spread)),
+      mrs_(meanReversionSpeed), vol_(volatility), byApprox_(byApprox) {
         registerWith(overnightIndex_);
         registerWith(discountHandle_);
         registerWith(spread_);
-        initializeDates();
+        ArithmeticOISRateHelper::initializeDates();
     }
 
     void ArithmeticOISRateHelper::initializeDates() {
 
         // dummy OvernightIndex with curve/swap arguments
         // review here
-        boost::shared_ptr<IborIndex> clonedIborIndex =
+        ext::shared_ptr<IborIndex> clonedIborIndex =
             overnightIndex_->clone(termStructureHandle_);
-        shared_ptr<OvernightIndex> clonedOvernightIndex =
-            boost::dynamic_pointer_cast<OvernightIndex>(clonedIborIndex);
+        ext::shared_ptr<OvernightIndex> clonedOvernightIndex =
+            ext::dynamic_pointer_cast<OvernightIndex>(clonedIborIndex);
 
        swap_ = MakeArithmeticAverageOIS(tenor_, clonedOvernightIndex, 0.0)
                 .withDiscountingTermStructure(discountRelinkableHandle_)
@@ -79,7 +72,7 @@ namespace QuantLib {
         // force recalculation when needed
         bool observer = false;
 
-        shared_ptr<YieldTermStructure> temp(t, no_deletion);
+        ext::shared_ptr<YieldTermStructure> temp(t, null_deleter());
         termStructureHandle_.linkTo(temp, observer);
 
         if (discountHandle_.empty())
@@ -91,7 +84,7 @@ namespace QuantLib {
     }
 
     Real ArithmeticOISRateHelper::impliedQuote() const {
-        QL_REQUIRE(termStructure_ != 0, "term structure not set");
+        QL_REQUIRE(termStructure_ != nullptr, "term structure not set");
         // we didn't register as observers - force calculation
         swap_->recalculate();
         //return swap_->fairRate();
@@ -106,9 +99,8 @@ namespace QuantLib {
     }
 
     void ArithmeticOISRateHelper::accept(AcyclicVisitor& v) {
-        Visitor<ArithmeticOISRateHelper>* v1 =
-            dynamic_cast<Visitor<ArithmeticOISRateHelper>*>(&v);
-        if (v1 != 0)
+        auto* v1 = dynamic_cast<Visitor<ArithmeticOISRateHelper>*>(&v);
+        if (v1 != nullptr)
             v1->visit(*this);
         else
             RateHelper::accept(v);

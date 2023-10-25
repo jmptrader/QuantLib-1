@@ -19,7 +19,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file analyticcontinuousfloatinglookback.hpp
+/*! \file analyticcontinuouspartialfloatinglookback.hpp
     \brief Analytic engine for continuous floating-strike lookback
 */
 
@@ -47,10 +47,11 @@ namespace QuantLib {
         : public ContinuousPartialFloatingLookbackOption::engine {
       public:
         AnalyticContinuousPartialFloatingLookbackEngine(
-            const boost::shared_ptr<GeneralizedBlackScholesProcess>& process);
-        void calculate() const;
+            ext::shared_ptr<GeneralizedBlackScholesProcess> process);
+        void calculate() const override;
+
       private:
-        boost::shared_ptr<GeneralizedBlackScholesProcess> process_;
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
         CumulativeNormalDistribution f_;
         // helper methods
         Real underlying() const;

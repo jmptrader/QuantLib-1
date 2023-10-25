@@ -1,7 +1,7 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
 /*
- Copyright (C) 2007 François du Vignaud
+ Copyright (C) 2007 FranÃ§ois du Vignaud
  Copyright (C) 2007 Giorgio Facchinetti
  Copyright (C) 2013 Peter Caspers
 
@@ -47,9 +47,8 @@ namespace QuantLib {
 
             //! \name CostFunction interface
             //@{
-            virtual Real value(const Array& freeParameters) const;
-            virtual Disposable<Array>
-                                   values(const Array& freeParameters) const;
+            Real value(const Array& freeParameters) const override;
+            Array values(const Array& freeParameters) const override;
             //@}
 
         private:

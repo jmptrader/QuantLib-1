@@ -17,53 +17,36 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-// the only header you need to use QuantLib
-#include <ql/quantlib.hpp>
-
-#ifdef BOOST_MSVC
-/* Uncomment the following lines to unmask floating-point
-   exceptions. Warning: unpredictable results can arise...
-
-   See http://www.wilmott.com/messageview.cfm?catid=10&threadid=9481
-   Is there anyone with a definitive word about this?
-*/
-// #include <float.h>
-// namespace { unsigned int u = _controlfp(_EM_INEXACT, _MCW_EM); }
+#include <ql/qldefines.hpp>
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
+#  include <ql/auto_link.hpp>
 #endif
+#include <ql/instruments/vanillaoption.hpp>
+#include <ql/math/integrals/tanhsinhintegral.hpp>
+#include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
+#include <ql/pricingengines/vanilla/analyticeuropeanvasicekengine.hpp>
+#include <ql/pricingengines/vanilla/analytichestonengine.hpp>
+#include <ql/pricingengines/vanilla/baroneadesiwhaleyengine.hpp>
+#include <ql/pricingengines/vanilla/batesengine.hpp>
+#include <ql/pricingengines/vanilla/binomialengine.hpp>
+#include <ql/pricingengines/vanilla/bjerksundstenslandengine.hpp>
+#include <ql/pricingengines/vanilla/fdblackscholesvanillaengine.hpp>
+#include <ql/pricingengines/vanilla/integralengine.hpp>
+#include <ql/pricingengines/vanilla/mcamericanengine.hpp>
+#include <ql/pricingengines/vanilla/mceuropeanengine.hpp>
+#include <ql/pricingengines/vanilla/qdfpamericanengine.hpp>
+#include <ql/time/calendars/target.hpp>
+#include <ql/utilities/dataformatters.hpp>
 
-#include <boost/timer.hpp>
 #include <iostream>
 #include <iomanip>
 
 using namespace QuantLib;
 
-#ifdef BOOST_MSVC
-#  ifdef QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN
-#    include <ql/auto_link.hpp>
-#    define BOOST_LIB_NAME boost_system
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#    define BOOST_LIB_NAME boost_thread
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#  endif
-#endif
-
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-    Integer sessionId() { return 0; }
-
-}
-#endif
-
-
 int main(int, char* []) {
 
     try {
 
-        boost::timer timer;
         std::cout << std::endl;
 
         // set up dates
@@ -108,35 +91,25 @@ int main(int, char* []) {
         for (Integer i=1; i<=4; i++)
             exerciseDates.push_back(settlementDate + 3*i*Months);
 
-        boost::shared_ptr<Exercise> europeanExercise(
-                                         new EuropeanExercise(maturity));
+        auto europeanExercise = ext::make_shared<EuropeanExercise>(maturity);
 
-        boost::shared_ptr<Exercise> bermudanExercise(
-                                         new BermudanExercise(exerciseDates));
+        auto bermudanExercise = ext::make_shared<BermudanExercise>(exerciseDates);
 
-        boost::shared_ptr<Exercise> americanExercise(
-                                         new AmericanExercise(settlementDate,
-                                                              maturity));
+        auto americanExercise = ext::make_shared<AmericanExercise>(settlementDate, maturity);
 
-        Handle<Quote> underlyingH(
-            boost::shared_ptr<Quote>(new SimpleQuote(underlying)));
+        Handle<Quote> underlyingH(ext::make_shared<SimpleQuote>(underlying));
 
         // bootstrap the yield/dividend/vol curves
         Handle<YieldTermStructure> flatTermStructure(
-            boost::shared_ptr<YieldTermStructure>(
-                new FlatForward(settlementDate, riskFreeRate, dayCounter)));
+            ext::make_shared<FlatForward>(settlementDate, riskFreeRate, dayCounter));
         Handle<YieldTermStructure> flatDividendTS(
-            boost::shared_ptr<YieldTermStructure>(
-                new FlatForward(settlementDate, dividendYield, dayCounter)));
+            ext::make_shared<FlatForward>(settlementDate, dividendYield, dayCounter));
         Handle<BlackVolTermStructure> flatVolTS(
-            boost::shared_ptr<BlackVolTermStructure>(
-                new BlackConstantVol(settlementDate, calendar, volatility,
-                                     dayCounter)));
-        boost::shared_ptr<StrikedTypePayoff> payoff(
-                                        new PlainVanillaPayoff(type, strike));
-        boost::shared_ptr<BlackScholesMertonProcess> bsmProcess(
-                 new BlackScholesMertonProcess(underlyingH, flatDividendTS,
-                                               flatTermStructure, flatVolTS));
+            ext::make_shared<BlackConstantVol>(settlementDate, calendar, volatility,
+                                     dayCounter));
+        auto payoff = ext::make_shared<PlainVanillaPayoff>(type, strike);
+        auto bsmProcess = ext::make_shared<BlackScholesMertonProcess>(
+                underlyingH, flatDividendTS, flatTermStructure, flatVolTS);
 
         // options
         VanillaOption europeanOption(payoff, europeanExercise);
@@ -147,8 +120,24 @@ int main(int, char* []) {
 
         // Black-Scholes for European
         method = "Black-Scholes";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                                     new AnalyticEuropeanEngine(bsmProcess)));
+        europeanOption.setPricingEngine(ext::make_shared<AnalyticEuropeanEngine>(bsmProcess));
+        std::cout << std::setw(widths[0]) << std::left << method
+                  << std::fixed
+                  << std::setw(widths[1]) << std::left << europeanOption.NPV()
+                  << std::setw(widths[2]) << std::left << "N/A"
+                  << std::setw(widths[3]) << std::left << "N/A"
+                  << std::endl;
+
+        //Vasicek rates model for European
+        method = "Black Vasicek Model";
+        Real r0 = riskFreeRate;
+        Real a = 0.3;
+        Real b = 0.3;
+        Real sigma_r = 0.15;
+        Real riskPremium = 0.0;
+        Real correlation = 0.5;
+        auto vasicekProcess = ext::make_shared<Vasicek>(r0, a, b, sigma_r, riskPremium);
+        europeanOption.setPricingEngine(ext::make_shared<AnalyticBlackVasicekEngine>(bsmProcess, vasicekProcess, correlation));
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -158,14 +147,11 @@ int main(int, char* []) {
 
         // semi-analytic Heston for European
         method = "Heston semi-analytic";
-        boost::shared_ptr<HestonProcess> hestonProcess(
-            new HestonProcess(flatTermStructure, flatDividendTS,
+        auto hestonProcess = ext::make_shared<HestonProcess>(flatTermStructure, flatDividendTS,
                               underlyingH, volatility*volatility,
-                              1.0, volatility*volatility, 0.001, 0.0));
-        boost::shared_ptr<HestonModel> hestonModel(
-                                              new HestonModel(hestonProcess));
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                                     new AnalyticHestonEngine(hestonModel)));
+                              1.0, volatility*volatility, 0.001, 0.0);
+        auto hestonModel = ext::make_shared<HestonModel>(hestonProcess);
+        europeanOption.setPricingEngine(ext::make_shared<AnalyticHestonEngine>(hestonModel));
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -175,14 +161,12 @@ int main(int, char* []) {
 
         // semi-analytic Bates for European
         method = "Bates semi-analytic";
-        boost::shared_ptr<BatesProcess> batesProcess(
-            new BatesProcess(flatTermStructure, flatDividendTS,
+        auto batesProcess = ext::make_shared<BatesProcess>(flatTermStructure, flatDividendTS,
                              underlyingH, volatility*volatility,
                              1.0, volatility*volatility, 0.001, 0.0,
-                             1e-14, 1e-14, 1e-14));
-        boost::shared_ptr<BatesModel> batesModel(new BatesModel(batesProcess));
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                                                new BatesEngine(batesModel)));
+                             1e-14, 1e-14, 1e-14);
+        auto batesModel = ext::make_shared<BatesModel>(batesProcess);
+        europeanOption.setPricingEngine(ext::make_shared<BatesEngine>(batesModel));
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -192,8 +176,7 @@ int main(int, char* []) {
 
         // Barone-Adesi and Whaley approximation for American
         method = "Barone-Adesi/Whaley";
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                       new BaroneAdesiWhaleyApproximationEngine(bsmProcess)));
+        americanOption.setPricingEngine(ext::make_shared<BaroneAdesiWhaleyApproximationEngine>(bsmProcess));
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << "N/A"
@@ -203,8 +186,38 @@ int main(int, char* []) {
 
         // Bjerksund and Stensland approximation for American
         method = "Bjerksund/Stensland";
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                      new BjerksundStenslandApproximationEngine(bsmProcess)));
+        americanOption.setPricingEngine(ext::make_shared<BjerksundStenslandApproximationEngine>(bsmProcess));
+        std::cout << std::setw(widths[0]) << std::left << method
+                  << std::fixed
+                  << std::setw(widths[1]) << std::left << "N/A"
+                  << std::setw(widths[2]) << std::left << "N/A"
+                  << std::setw(widths[3]) << std::left << americanOption.NPV()
+                  << std::endl;
+
+        // QD+ fixed-point engine for American
+        method = "QD+ fixed-point (fast)";
+        americanOption.setPricingEngine(ext::make_shared<QdFpAmericanEngine>
+                                        (bsmProcess, QdFpAmericanEngine::fastScheme()));
+        std::cout << std::setw(widths[0]) << std::left << method
+                  << std::fixed
+                  << std::setw(widths[1]) << std::left << "N/A"
+                  << std::setw(widths[2]) << std::left << "N/A"
+                  << std::setw(widths[3]) << std::left << americanOption.NPV()
+                  << std::endl;
+
+        method = "QD+ fixed-point (accurate)";
+        americanOption.setPricingEngine(ext::make_shared<QdFpAmericanEngine>
+                                        (bsmProcess, QdFpAmericanEngine::accurateScheme()));
+        std::cout << std::setw(widths[0]) << std::left << method
+                  << std::fixed
+                  << std::setw(widths[1]) << std::left << "N/A"
+                  << std::setw(widths[2]) << std::left << "N/A"
+                  << std::setw(widths[3]) << std::left << americanOption.NPV()
+                  << std::endl;
+
+        method = "QD+ fixed-point (high precision)";
+        americanOption.setPricingEngine(ext::make_shared<QdFpAmericanEngine>
+                                        (bsmProcess, QdFpAmericanEngine::highPrecisionScheme()));
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << "N/A"
@@ -214,8 +227,7 @@ int main(int, char* []) {
 
         // Integral
         method = "Integral";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                                             new IntegralEngine(bsmProcess)));
+        europeanOption.setPricingEngine(ext::make_shared<IntegralEngine>(bsmProcess));
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -226,15 +238,13 @@ int main(int, char* []) {
         // Finite differences
         Size timeSteps = 801;
         method = "Finite differences";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                 new FDEuropeanEngine<CrankNicolson>(bsmProcess,
-                                                     timeSteps,timeSteps-1)));
-        bermudanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                 new FDBermudanEngine<CrankNicolson>(bsmProcess,
-                                                     timeSteps,timeSteps-1)));
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                 new FDAmericanEngine<CrankNicolson>(bsmProcess,
-                                                     timeSteps,timeSteps-1)));
+        auto fdengine =
+            ext::make_shared<FdBlackScholesVanillaEngine>(bsmProcess,
+                                                          timeSteps,
+                                                          timeSteps-1);
+        europeanOption.setPricingEngine(fdengine);
+        bermudanOption.setPricingEngine(fdengine);
+        americanOption.setPricingEngine(fdengine);
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -244,28 +254,23 @@ int main(int, char* []) {
 
         // Binomial method: Jarrow-Rudd
         method = "Binomial Jarrow-Rudd";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<JarrowRudd>(bsmProcess,timeSteps)));
-        bermudanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<JarrowRudd>(bsmProcess,timeSteps)));
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<JarrowRudd>(bsmProcess,timeSteps)));
+        auto jrEngine = ext::make_shared<BinomialVanillaEngine<JarrowRudd>>(bsmProcess, timeSteps);
+        europeanOption.setPricingEngine(jrEngine);
+        bermudanOption.setPricingEngine(jrEngine);
+        americanOption.setPricingEngine(jrEngine);
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
                   << std::setw(widths[2]) << std::left << bermudanOption.NPV()
                   << std::setw(widths[3]) << std::left << americanOption.NPV()
                   << std::endl;
+
+        // Binomial method: Cox-Ross-Rubinstein
         method = "Binomial Cox-Ross-Rubinstein";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                      new BinomialVanillaEngine<CoxRossRubinstein>(bsmProcess,
-                                                                   timeSteps)));
-        bermudanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                      new BinomialVanillaEngine<CoxRossRubinstein>(bsmProcess,
-                                                                   timeSteps)));
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                      new BinomialVanillaEngine<CoxRossRubinstein>(bsmProcess,
-                                                                   timeSteps)));
+        auto crrEngine = ext::make_shared<BinomialVanillaEngine<CoxRossRubinstein>>(bsmProcess, timeSteps);
+        europeanOption.setPricingEngine(crrEngine);
+        bermudanOption.setPricingEngine(crrEngine);
+        americanOption.setPricingEngine(crrEngine);
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -275,15 +280,10 @@ int main(int, char* []) {
 
         // Binomial method: Additive equiprobabilities
         method = "Additive equiprobabilities";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<AdditiveEQPBinomialTree>(bsmProcess,
-                                                                   timeSteps)));
-        bermudanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<AdditiveEQPBinomialTree>(bsmProcess,
-                                                                   timeSteps)));
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<AdditiveEQPBinomialTree>(bsmProcess,
-                                                                   timeSteps)));
+        auto aeqpEngine = ext::make_shared<BinomialVanillaEngine<AdditiveEQPBinomialTree>>(bsmProcess, timeSteps);
+        europeanOption.setPricingEngine(aeqpEngine);
+        bermudanOption.setPricingEngine(aeqpEngine);
+        americanOption.setPricingEngine(aeqpEngine);
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -293,12 +293,10 @@ int main(int, char* []) {
 
         // Binomial method: Binomial Trigeorgis
         method = "Binomial Trigeorgis";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<Trigeorgis>(bsmProcess,timeSteps)));
-        bermudanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<Trigeorgis>(bsmProcess,timeSteps)));
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                new BinomialVanillaEngine<Trigeorgis>(bsmProcess,timeSteps)));
+        auto trigeorgisEngine = ext::make_shared<BinomialVanillaEngine<Trigeorgis>>(bsmProcess, timeSteps);
+        europeanOption.setPricingEngine(trigeorgisEngine);
+        bermudanOption.setPricingEngine(trigeorgisEngine);
+        americanOption.setPricingEngine(trigeorgisEngine);
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -308,12 +306,10 @@ int main(int, char* []) {
 
         // Binomial method: Binomial Tian
         method = "Binomial Tian";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                      new BinomialVanillaEngine<Tian>(bsmProcess,timeSteps)));
-        bermudanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                      new BinomialVanillaEngine<Tian>(bsmProcess,timeSteps)));
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                      new BinomialVanillaEngine<Tian>(bsmProcess,timeSteps)));
+        auto tianEngine = ext::make_shared<BinomialVanillaEngine<Tian>>(bsmProcess, timeSteps);
+        europeanOption.setPricingEngine(tianEngine);
+        bermudanOption.setPricingEngine(tianEngine);
+        americanOption.setPricingEngine(tianEngine);
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -323,12 +319,10 @@ int main(int, char* []) {
 
         // Binomial method: Binomial Leisen-Reimer
         method = "Binomial Leisen-Reimer";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-              new BinomialVanillaEngine<LeisenReimer>(bsmProcess,timeSteps)));
-        bermudanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-              new BinomialVanillaEngine<LeisenReimer>(bsmProcess,timeSteps)));
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-              new BinomialVanillaEngine<LeisenReimer>(bsmProcess,timeSteps)));
+        auto lrEngine = ext::make_shared<BinomialVanillaEngine<LeisenReimer>>(bsmProcess, timeSteps);
+        europeanOption.setPricingEngine(lrEngine);
+        bermudanOption.setPricingEngine(lrEngine);
+        americanOption.setPricingEngine(lrEngine);
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -338,12 +332,10 @@ int main(int, char* []) {
 
         // Binomial method: Binomial Joshi
         method = "Binomial Joshi";
-        europeanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                    new BinomialVanillaEngine<Joshi4>(bsmProcess,timeSteps)));
-        bermudanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                    new BinomialVanillaEngine<Joshi4>(bsmProcess,timeSteps)));
-        americanOption.setPricingEngine(boost::shared_ptr<PricingEngine>(
-                    new BinomialVanillaEngine<Joshi4>(bsmProcess,timeSteps)));
+        auto joshiEngine = ext::make_shared<BinomialVanillaEngine<Joshi4>>(bsmProcess, timeSteps);
+        europeanOption.setPricingEngine(joshiEngine);
+        bermudanOption.setPricingEngine(joshiEngine);
+        americanOption.setPricingEngine(joshiEngine);
         std::cout << std::setw(widths[0]) << std::left << method
                   << std::fixed
                   << std::setw(widths[1]) << std::left << europeanOption.NPV()
@@ -355,8 +347,7 @@ int main(int, char* []) {
         timeSteps = 1;
         method = "MC (crude)";
         Size mcSeed = 42;
-        boost::shared_ptr<PricingEngine> mcengine1;
-        mcengine1 = MakeMCEuropeanEngine<PseudoRandom>(bsmProcess)
+        auto mcengine1 = MakeMCEuropeanEngine<PseudoRandom>(bsmProcess)
             .withSteps(timeSteps)
             .withAbsoluteTolerance(0.02)
             .withSeed(mcSeed);
@@ -373,8 +364,7 @@ int main(int, char* []) {
         method = "QMC (Sobol)";
         Size nSamples = 32768;  // 2^15
 
-        boost::shared_ptr<PricingEngine> mcengine2;
-        mcengine2 = MakeMCEuropeanEngine<LowDiscrepancy>(bsmProcess)
+        auto mcengine2 = MakeMCEuropeanEngine<LowDiscrepancy>(bsmProcess)
             .withSteps(timeSteps)
             .withSamples(nSamples);
         europeanOption.setPricingEngine(mcengine2);
@@ -387,8 +377,7 @@ int main(int, char* []) {
 
         // Monte Carlo Method: MC (Longstaff Schwartz)
         method = "MC (Longstaff Schwartz)";
-        boost::shared_ptr<PricingEngine> mcengine3;
-        mcengine3 = MakeMCAmericanEngine<PseudoRandom>(bsmProcess)
+        auto mcengine3 = MakeMCAmericanEngine<PseudoRandom>(bsmProcess)
             .withSteps(100)
             .withAntitheticVariate()
             .withCalibrationSamples(4096)
@@ -403,18 +392,6 @@ int main(int, char* []) {
                   << std::endl;
 
         // End test
-        double seconds = timer.elapsed();
-        Integer hours = int(seconds/3600);
-        seconds -= hours * 3600;
-        Integer minutes = int(seconds/60);
-        seconds -= minutes * 60;
-        std::cout << " \nRun completed in ";
-        if (hours > 0)
-            std::cout << hours << " h ";
-        if (hours > 0 || minutes > 0)
-            std::cout << minutes << " m ";
-        std::cout << std::fixed << std::setprecision(0)
-                  << seconds << " s\n" << std::endl;
         return 0;
 
     } catch (std::exception& e) {

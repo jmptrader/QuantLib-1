@@ -1,6 +1,7 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
+
 /*
-  Copyright (C) 2014 Peter Caspers
+  Copyright (C) 2014, 2016 Peter Caspers
 
   This file is part of QuantLib, a free-software/open-source library
   for financial quantitative analysts and developers - http://quantlib.org/
@@ -55,56 +56,88 @@ namespace QuantLib {
         e.g. a zero lower bound always refers to the lower bound of
         the rates in the shifted lognormal model.
         Note that for normal volatility input the lower rate bound
-        should probably be adjusted to an appropriate negative value,
-        there is no automatic adjustment in this case.
+        is adjusted to min(-upperBound, lowerBound), except the bounds
+        are set explicitly.
     */
 
     class LinearTsrPricer : public CmsCouponPricer, public MeanRevertingPricer {
+
+      private:
+        static const Real defaultLowerBound,
+                          defaultUpperBound;
 
       public:
 
         struct Settings {
 
-            Settings()
-                : strategy_(RateBound), vegaRatio_(0.01),
-                  priceThreshold_(1.0E-8), stdDevs_(3.0),
-                  lowerRateBound_(0.0001), upperRateBound_(2.0000) {}
+            Settings() : lowerRateBound_(defaultLowerBound), upperRateBound_(defaultUpperBound) {}
 
-            Settings &withRateBound(const Real lowerRateBound = 0.0001,
-                                    const Real upperRateBound = 2.0000) {
+            Settings &withRateBound(const Real lowerRateBound = defaultLowerBound,
+                                    const Real upperRateBound = defaultUpperBound) {
                 strategy_ = RateBound;
                 lowerRateBound_ = lowerRateBound;
                 upperRateBound_ = upperRateBound;
+                defaultBounds_ = false;
                 return *this;
             }
 
-            Settings &withVegaRatio(const Real vegaRatio = 0.01,
-                                    const Real lowerRateBound = 0.0001,
-                                    const Real upperRateBound = 2.0000) {
+            Settings &withVegaRatio(const Real vegaRatio = 0.01) {
+                strategy_ = VegaRatio;
+                vegaRatio_ = vegaRatio;
+                lowerRateBound_ = defaultLowerBound;
+                upperRateBound_ = defaultUpperBound;
+                defaultBounds_ = true;
+                return *this;
+            }
+
+            Settings &withVegaRatio(const Real vegaRatio,
+                                    const Real lowerRateBound,
+                                    const Real upperRateBound) {
                 strategy_ = VegaRatio;
                 vegaRatio_ = vegaRatio;
                 lowerRateBound_ = lowerRateBound;
                 upperRateBound_ = upperRateBound;
+                defaultBounds_ = false;
                 return *this;
             }
 
-            Settings &withPriceThreshold(const Real priceThreshold = 1.0E-8,
-                                         const Real lowerRateBound = 0.0001,
-                                         const Real upperRateBound = 2.0000) {
+            Settings &withPriceThreshold(const Real priceThreshold = 1.0E-8) {
+                strategy_ = PriceThreshold;
+                priceThreshold_ = priceThreshold;
+                lowerRateBound_ = defaultLowerBound;
+                upperRateBound_ = defaultUpperBound;
+                defaultBounds_ = true;
+                return *this;
+            }
+
+            Settings &withPriceThreshold(const Real priceThreshold,
+                                         const Real lowerRateBound,
+                                         const Real upperRateBound) {
                 strategy_ = PriceThreshold;
                 priceThreshold_ = priceThreshold;
                 lowerRateBound_ = lowerRateBound;
                 upperRateBound_ = upperRateBound;
+                defaultBounds_ = false;
                 return *this;
             }
 
-            Settings &withBSStdDevs(const Real stdDevs = 3.0,
-                                    const Real lowerRateBound = 0.0001,
-                                    const Real upperRateBound = 2.0000) {
+            Settings &withBSStdDevs(const Real stdDevs = 3.0) {
+                strategy_ = BSStdDevs;
+                stdDevs_ = stdDevs;
+                lowerRateBound_ = defaultLowerBound;
+                upperRateBound_ = defaultUpperBound;
+                defaultBounds_ = true;
+                return *this;
+            }
+
+            Settings &withBSStdDevs(const Real stdDevs,
+                                    const Real lowerRateBound,
+                                    const Real upperRateBound) {
                 strategy_ = BSStdDevs;
                 stdDevs_ = stdDevs;
                 lowerRateBound_ = lowerRateBound;
                 upperRateBound_ = upperRateBound;
+                defaultBounds_ = false;
                 return *this;
             }
 
@@ -115,32 +148,32 @@ namespace QuantLib {
                 BSStdDevs
             };
 
-            Strategy strategy_;
-            Real vegaRatio_;
-            Real priceThreshold_;
-            Real stdDevs_;
+            Strategy strategy_ = RateBound;
+            Real vegaRatio_ = 0.01;
+            Real priceThreshold_ = 1.0E-8;
+            Real stdDevs_ = 3.0;
             Real lowerRateBound_, upperRateBound_;
+            bool defaultBounds_ = true;
         };
 
 
-        LinearTsrPricer(const Handle<SwaptionVolatilityStructure> &swaptionVol,
-                        const Handle<Quote> &meanReversion,
-                        const Handle<YieldTermStructure> &couponDiscountCurve =
-                            Handle<YieldTermStructure>(),
-                        const Settings &settings = Settings(),
-                        const boost::shared_ptr<Integrator> &integrator =
-                            boost::shared_ptr<Integrator>());
+        LinearTsrPricer(
+            const Handle<SwaptionVolatilityStructure>& swaptionVol,
+            Handle<Quote> meanReversion,
+            Handle<YieldTermStructure> couponDiscountCurve = Handle<YieldTermStructure>(),
+            const Settings& settings = Settings(),
+            ext::shared_ptr<Integrator> integrator = ext::shared_ptr<Integrator>());
 
         /* */
-        virtual Real swapletPrice() const;
-        virtual Rate swapletRate() const;
-        virtual Real capletPrice(Rate effectiveCap) const;
-        virtual Rate capletRate(Rate effectiveCap) const;
-        virtual Real floorletPrice(Rate effectiveFloor) const;
-        virtual Rate floorletRate(Rate effectiveFloor) const;
+        Real swapletPrice() const override;
+        Rate swapletRate() const override;
+        Real capletPrice(Rate effectiveCap) const override;
+        Rate capletRate(Rate effectiveCap) const override;
+        Real floorletPrice(Rate effectiveFloor) const override;
+        Rate floorletRate(Rate effectiveFloor) const override;
         /* */
-        Real meanReversion() const;
-        void setMeanReversion(const Handle<Quote> &meanReversion) {
+        Real meanReversion() const override;
+        void setMeanReversion(const Handle<Quote>& meanReversion) override {
             unregisterWith(meanReversion_);
             meanReversion_ = meanReversion;
             registerWith(meanReversion_);
@@ -151,9 +184,11 @@ namespace QuantLib {
       private:
 
         Real GsrG(const Date &d) const;
-        Real singularTerms(const Option::Type type, const Real strike) const;
-        Real integrand(const Real strike) const;
+        Real singularTerms(Option::Type type, Real strike) const;
+        Real integrand(Real strike) const;
         Real a_, b_;
+
+        class integrand_f;
 
         class VegaRatioHelper {
           public:
@@ -179,7 +214,7 @@ namespace QuantLib {
             const Option::Type type_;
         };
 
-        void initialize(const FloatingRateCoupon &coupon);
+        void initialize(const FloatingRateCoupon& coupon) override;
         Real optionletPrice(Option::Type optionType, Real strike) const;
         Real strikeFromVegaRatio(Real ratio, Option::Type optionType,
                                  Real referenceStrike) const;
@@ -200,15 +235,15 @@ namespace QuantLib {
         Period swapTenor_;
         Real spreadLegValue_, swapRateValue_, couponDiscountRatio_, annuity_;
 
-        boost::shared_ptr<SwapIndex> swapIndex_;
-        boost::shared_ptr<VanillaSwap> swap_;
-        boost::shared_ptr<SmileSection> smileSection_;
+        ext::shared_ptr<SwapIndex> swapIndex_;
+        ext::shared_ptr<VanillaSwap> swap_;
+        ext::shared_ptr<SmileSection> smileSection_;
 
         Settings settings_;
         DayCounter volDayCounter_;
-        boost::shared_ptr<Integrator> integrator_;
+        ext::shared_ptr<Integrator> integrator_;
 
-        Real shiftedLowerBound_, shiftedUpperBound_;
+        Real adjustedLowerBound_, adjustedUpperBound_;
     };
 }
 

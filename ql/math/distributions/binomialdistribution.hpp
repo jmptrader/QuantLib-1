@@ -48,8 +48,20 @@ namespace QuantLib {
         Given an integer k it returns its probability in a Binomial
         distribution with parameters p and n.
     */
-    class BinomialDistribution : public std::unary_function<Real,Real> {
+    class BinomialDistribution {
       public:
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real argument_type;
+
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real result_type;
+
         BinomialDistribution(Real p, BigNatural n);
         // function
         Real operator()(BigNatural k) const;
@@ -64,9 +76,20 @@ namespace QuantLib {
         formula here ...
 
     */
-    class CumulativeBinomialDistribution
-    : public std::unary_function<Real,Real> {
+    class CumulativeBinomialDistribution {
       public:
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real argument_type;
+
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real result_type;
+
         CumulativeBinomialDistribution(Real p, BigNatural n);
         // function
         Real operator()(BigNatural k) const {

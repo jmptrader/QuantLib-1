@@ -21,70 +21,47 @@
    engine and compares to Bloomberg's Hull White price/yield calculations.
 */
 
-#ifdef BOOST_MSVC
-/* Uncomment the following lines to unmask floating-point
-   exceptions. Warning: unpredictable results can arise...
-
-   See http://www.wilmott.com/messageview.cfm?catid=10&threadid=9481
-   Is there anyone with a definitive word about this?
-*/
-// #include <float.h>
-// namespace { unsigned int u = _controlfp(_EM_INEXACT, _MCW_EM); }
+#include <ql/qldefines.hpp>
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
+#  include <ql/auto_link.hpp>
 #endif
+#include <ql/experimental/callablebonds/callablebond.hpp>
+#include <ql/experimental/callablebonds/treecallablebondengine.hpp>
+#include <ql/models/shortrate/onefactormodels/hullwhite.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
+#include <ql/time/calendars/unitedstates.hpp>
+#include <ql/time/daycounters/actualactual.hpp>
 
-#include <ql/quantlib.hpp>
 #include <vector>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
-#include <boost/timer.hpp>
 
 using namespace std;
 using namespace QuantLib;
 
-#ifdef BOOST_MSVC
-#  ifdef QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN
-#    include <ql/auto_link.hpp>
-#    define BOOST_LIB_NAME boost_system
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#    define BOOST_LIB_NAME boost_thread
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#  endif
-#endif
-
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-    Integer sessionId() { return 0; }
-}
-#endif
-
-
-boost::shared_ptr<YieldTermStructure>
+ext::shared_ptr<YieldTermStructure>
     flatRate(const Date& today,
-             const boost::shared_ptr<Quote>& forward,
+             const ext::shared_ptr<Quote>& forward,
              const DayCounter& dc,
              const Compounding& compounding,
              const Frequency& frequency) {
-    return boost::shared_ptr<YieldTermStructure>(
-                                       new FlatForward(today,
-                                                       Handle<Quote>(forward),
-                                                       dc,
-                                                       compounding,
-                                                       frequency));
+    return ext::make_shared<FlatForward>(today,
+                                         Handle<Quote>(forward),
+                                         dc,
+                                         compounding,
+                                         frequency);
 }
 
 
-boost::shared_ptr<YieldTermStructure>
+ext::shared_ptr<YieldTermStructure>
     flatRate(const Date& today,
              Rate forward,
              const DayCounter& dc,
              const Compounding &compounding,
              const Frequency &frequency) {
     return flatRate(today,
-            boost::shared_ptr<Quote>(new SimpleQuote(forward)),
+            ext::make_shared<SimpleQuote>(forward),
             dc,
             compounding,
             frequency);
@@ -95,7 +72,6 @@ int main(int, char* [])
 {
     try {
 
-        boost::timer timer;
 
         Date today = Date(16,October,2007);
         Settings::instance().evaluationDate() = today;
@@ -139,13 +115,12 @@ int main(int, char* [])
         for (Size i=0; i< numberOfCallDates; i++) {
             Calendar nullCalendar = NullCalendar();
 
-            Callability::Price myPrice(callPrice,
-                                       Callability::Price::Clean);
+            Bond::Price myPrice(callPrice, Bond::Price::Clean);
             callSchedule.push_back(
-                boost::shared_ptr<Callability>(
-                    new Callability(myPrice,
+                ext::make_shared<Callability>(
+                                    myPrice,
                                     Callability::Call,
-                                    callDate )));
+                                    callDate ));
             callDate = nullCalendar.advance(callDate, 3, Months);
         }
 
@@ -186,11 +161,9 @@ int main(int, char* [])
 
         Real sigma = QL_EPSILON; // core dumps if zero on Cygwin
 
-        boost::shared_ptr<ShortRateModel> hw0(
-                       new HullWhite(termStructure,reversionParameter,sigma));
+        auto hw0 = ext::make_shared<HullWhite>(termStructure,reversionParameter,sigma);
 
-        boost::shared_ptr<PricingEngine> engine0(
-                      new TreeCallableFixedRateBondEngine(hw0,gridIntervals));
+        auto engine0 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw0,gridIntervals);
 
         CallableFixedRateBond callableBond(settlementDays, faceAmount, sch,
                                            vector<Rate>(1, coupon),
@@ -223,11 +196,9 @@ int main(int, char* [])
 
         cout << "sigma/vol (%) = " << 100.*sigma << endl;
 
-        boost::shared_ptr<ShortRateModel> hw1(
-                       new HullWhite(termStructure,reversionParameter,sigma));
+        auto hw1 = ext::make_shared<HullWhite>(termStructure,reversionParameter,sigma);
 
-        boost::shared_ptr<PricingEngine> engine1(
-                      new TreeCallableFixedRateBondEngine(hw1,gridIntervals));
+        auto engine1 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw1,gridIntervals);
 
         callableBond.setPricingEngine(engine1);
 
@@ -249,11 +220,9 @@ int main(int, char* [])
 
         sigma = .03;
 
-        boost::shared_ptr<ShortRateModel> hw2(
-                     new HullWhite(termStructure, reversionParameter, sigma));
+        auto hw2 = ext::make_shared<HullWhite>(termStructure, reversionParameter, sigma);
 
-        boost::shared_ptr<PricingEngine> engine2(
-                      new TreeCallableFixedRateBondEngine(hw2,gridIntervals));
+        auto engine2 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw2,gridIntervals);
 
         callableBond.setPricingEngine(engine2);
 
@@ -279,11 +248,9 @@ int main(int, char* [])
 
         sigma = .06;
 
-        boost::shared_ptr<ShortRateModel> hw3(
-                     new HullWhite(termStructure, reversionParameter, sigma));
+        auto hw3 = ext::make_shared<HullWhite>(termStructure, reversionParameter, sigma);
 
-        boost::shared_ptr<PricingEngine> engine3(
-                      new TreeCallableFixedRateBondEngine(hw3,gridIntervals));
+        auto engine3 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw3,gridIntervals);
 
         callableBond.setPricingEngine(engine3);
 
@@ -309,11 +276,9 @@ int main(int, char* [])
 
         sigma = .12;
 
-        boost::shared_ptr<ShortRateModel> hw4(
-                     new HullWhite(termStructure, reversionParameter, sigma));
+        auto hw4 = ext::make_shared<HullWhite>(termStructure, reversionParameter, sigma);
 
-        boost::shared_ptr<PricingEngine> engine4(
-                      new TreeCallableFixedRateBondEngine(hw4,gridIntervals));
+        auto engine4 = ext::make_shared<TreeCallableFixedRateBondEngine>(hw4,gridIntervals);
 
         callableBond.setPricingEngine(engine4);
 
@@ -334,19 +299,6 @@ int main(int, char* [])
         cout << "77.31 / 10.65"
              << endl
              << endl;
-
-        double seconds = timer.elapsed();
-        Integer hours = int(seconds/3600);
-        seconds -= hours * 3600;
-        Integer minutes = int(seconds/60);
-        seconds -= minutes * 60;
-        cout << " \nRun completed in ";
-        if (hours > 0)
-            cout << hours << " h ";
-        if (hours > 0 || minutes > 0)
-            cout << minutes << " m ";
-        cout << fixed << setprecision(0)
-             << seconds << " s\n" << endl;
 
         return 0;
 

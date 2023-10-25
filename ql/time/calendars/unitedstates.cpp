@@ -4,6 +4,8 @@
  Copyright (C) 2004, 2005 Ferdinando Ametrano
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
  Copyright (C) 2003, 2004, 2005, 2006 StatPro Italia srl
+ Copyright (C) 2017 Peter Caspers
+ Copyright (C) 2017 Oleg Kulkov
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -72,22 +74,39 @@ namespace QuantLib {
             }
         }
 
+        bool isVeteransDayNoSaturday(Day d, Month m, Year y, Weekday w) {
+            if (y <= 1970 || y >= 1978) {
+                // November 11th, adjusted, but no Saturday to Friday
+                return (d == 11 || (d == 12 && w == Monday)) && m == November;
+            } else {
+                // fourth Monday in October
+                return (d >= 22 && d <= 28) && w == Monday && m == October;
+            }
+        }
+
+        bool isJuneteenth(Day d, Month m, Year y, Weekday w) {
+            // declared in 2021, but only observed by exchanges since 2022
+            return (d == 19 || (d == 20 && w == Monday) || (d == 18 && w == Friday))
+                && m == June && y >= 2022;
+        }
     }
-    
+
     UnitedStates::UnitedStates(UnitedStates::Market market) {
-        // all calendar instances on the same market share the same
-        // implementation instance
-        static boost::shared_ptr<Calendar::Impl> settlementImpl(
-                                        new UnitedStates::SettlementImpl);
-        static boost::shared_ptr<Calendar::Impl> nyseImpl(
-                                        new UnitedStates::NyseImpl);
-        static boost::shared_ptr<Calendar::Impl> governmentImpl(
-                                        new UnitedStates::GovernmentBondImpl);
-        static boost::shared_ptr<Calendar::Impl> nercImpl(
-                                        new UnitedStates::NercImpl);
+        // all calendar instances on the same market share the same implementation instance
+        static auto settlementImpl = ext::make_shared<UnitedStates::SettlementImpl>();
+        static auto liborImpactImpl = ext::make_shared<UnitedStates::LiborImpactImpl>();
+        static auto nyseImpl = ext::make_shared<UnitedStates::NyseImpl>();
+        static auto governmentImpl = ext::make_shared<UnitedStates::GovernmentBondImpl>();
+        static auto nercImpl = ext::make_shared<UnitedStates::NercImpl>();
+        static auto federalReserveImpl = ext::make_shared<UnitedStates::FederalReserveImpl>();
+        static auto sofrImpl = ext::make_shared<UnitedStates::SofrImpl>();
+
         switch (market) {
           case Settlement:
             impl_ = settlementImpl;
+            break;
+          case LiborImpact:
+            impl_ = liborImpactImpl;
             break;
           case NYSE:
             impl_ = nyseImpl;
@@ -95,8 +114,14 @@ namespace QuantLib {
           case GovernmentBond:
             impl_ = governmentImpl;
             break;
+          case SOFR:
+            impl_ = sofrImpl;
+            break;
           case NERC:
             impl_ = nercImpl;
+            break;
+          case FederalReserve:
+            impl_ = federalReserveImpl;
             break;
           default:
             QL_FAIL("unknown market");
@@ -121,6 +146,8 @@ namespace QuantLib {
             || isWashingtonBirthday(d, m, y, w)
             // Memorial Day (last Monday in May)
             || isMemorialDay(d, m, y, w)
+            // Juneteenth (Monday if Sunday or Friday if Saturday)
+            || isJuneteenth(d, m, y, w)
             // Independence Day (Monday if Sunday or Friday if Saturday)
             || ((d == 4 || (d == 5 && w == Monday) ||
                  (d == 3 && w == Friday)) && m == July)
@@ -135,10 +162,22 @@ namespace QuantLib {
             // Christmas (Monday if Sunday or Friday if Saturday)
             || ((d == 25 || (d == 26 && w == Monday) ||
                  (d == 24 && w == Friday)) && m == December))
-            return false;
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
     }
 
+    bool UnitedStates::LiborImpactImpl::isBusinessDay(const Date& date) const {
+        // Since 2015 Independence Day only impacts Libor if it falls
+        // on a weekday
+        Weekday w = date.weekday();
+        Day d = date.dayOfMonth();
+        Month m = date.month();
+        Year y = date.year();
+        if (((d == 5 && w == Monday) ||
+            (d == 3 && w == Friday)) && m == July && y >= 2015)
+            return true;
+        return SettlementImpl::isBusinessDay(date);
+    }
 
     bool UnitedStates::NyseImpl::isBusinessDay(const Date& date) const {
         Weekday w = date.weekday();
@@ -155,6 +194,8 @@ namespace QuantLib {
             || (dd == em-3)
             // Memorial Day (last Monday in May)
             || isMemorialDay(d, m, y, w)
+            // Juneteenth (Monday if Sunday or Friday if Saturday)
+            || isJuneteenth(d, m, y, w)
             // Independence Day (Monday if Sunday or Friday if Saturday)
             || ((d == 4 || (d == 5 && w == Monday) ||
                  (d == 3 && w == Friday)) && m == July)
@@ -177,8 +218,10 @@ namespace QuantLib {
             return false;
 
         // Special closings
-        if (// Hurricane Sandy
-            (y == 2012 && m == October && (d == 29 || d == 30))
+        if (// President Bush's Funeral
+            (y == 2018 && m == December && d == 5)
+            // Hurricane Sandy
+            || (y == 2012 && m == October && (d == 29 || d == 30))
             // President Ford's funeral
             || (y == 2007 && m == January && d == 2)
             // President Reagan's funeral
@@ -223,8 +266,7 @@ namespace QuantLib {
     }
 
 
-    bool UnitedStates::GovernmentBondImpl::isBusinessDay(const Date& date)
-                                                                      const {
+    bool UnitedStates::GovernmentBondImpl::isBusinessDay(const Date& date) const {
         Weekday w = date.weekday();
         Day d = date.dayOfMonth(), dd = date.dayOfYear();
         Month m = date.month();
@@ -238,10 +280,13 @@ namespace QuantLib {
                 && y >= 1983)
             // Washington's birthday (third Monday in February)
             || isWashingtonBirthday(d, m, y, w)
-            // Good Friday
-            || (dd == em-3)
+            // Good Friday (2015, 2021, 2023 are half day due to NFP/SIFMA;
+            // see <https://www.sifma.org/resources/general/holiday-schedule/>)
+            || (dd == em-3 && y != 2015 && y != 2021 && y != 2023)
             // Memorial Day (last Monday in May)
             || isMemorialDay(d, m, y, w)
+            // Juneteenth (Monday if Sunday or Friday if Saturday)
+            || isJuneteenth(d, m, y, w)
             // Independence Day (Monday if Sunday or Friday if Saturday)
             || ((d == 4 || (d == 5 && w == Monday) ||
                  (d == 3 && w == Friday)) && m == July)
@@ -249,15 +294,33 @@ namespace QuantLib {
             || isLaborDay(d, m, y, w)
             // Columbus Day (second Monday in October)
             || isColumbusDay(d, m, y, w)
-            // Veteran's Day (Monday if Sunday or Friday if Saturday)
-            || isVeteransDay(d, m, y, w)
+            // Veteran's Day (Monday if Sunday)
+            || isVeteransDayNoSaturday(d, m, y, w)
             // Thanksgiving Day (fourth Thursday in November)
             || ((d >= 22 && d <= 28) && w == Thursday && m == November)
             // Christmas (Monday if Sunday or Friday if Saturday)
             || ((d == 25 || (d == 26 && w == Monday) ||
                  (d == 24 && w == Friday)) && m == December))
             return false;
+
+        // Special closings
+        if (// President Bush's Funeral
+            (y == 2018 && m == December && d == 5)
+            // Hurricane Sandy
+            || (y == 2012 && m == October && (d == 30))
+            // President Reagan's funeral
+            || (y == 2004 && m == June && d == 11)
+            ) return false;
+
         return true;
+    }
+
+
+    bool UnitedStates::SofrImpl::isBusinessDay(const Date& date) const {
+        // Good Friday 2023 was only a half close for SIFMA but SOFR didn't fix
+        if (date == Date(7, April, 2023))
+            return false;
+        return GovernmentBondImpl::isBusinessDay(date);
     }
 
 
@@ -279,7 +342,42 @@ namespace QuantLib {
             || ((d >= 22 && d <= 28) && w == Thursday && m == November)
             // Christmas (Monday if Sunday)
             || ((d == 25 || (d == 26 && w == Monday)) && m == December))
-            return false;
+            return false; // NOLINT(readability-simplify-boolean-expr)
+        return true;
+    }
+
+
+    bool UnitedStates::FederalReserveImpl::isBusinessDay(const Date& date) const {
+        // see https://www.frbservices.org/about/holiday-schedules for details
+        Weekday w = date.weekday();
+        Day d = date.dayOfMonth();
+        Month m = date.month();
+        Year y = date.year();
+        if (isWeekend(w)
+            // New Year's Day (possibly moved to Monday if on Sunday)
+            || ((d == 1 || (d == 2 && w == Monday)) && m == January)
+            // Martin Luther King's birthday (third Monday in January)
+            || ((d >= 15 && d <= 21) && w == Monday && m == January
+                && y >= 1983)
+            // Washington's birthday (third Monday in February)
+            || isWashingtonBirthday(d, m, y, w)
+            // Memorial Day (last Monday in May)
+            || isMemorialDay(d, m, y, w)
+            // Juneteenth (Monday if Sunday or Friday if Saturday)
+            || isJuneteenth(d, m, y, w)
+            // Independence Day (Monday if Sunday)
+            || ((d == 4 || (d == 5 && w == Monday)) && m == July)
+            // Labor Day (first Monday in September)
+            || isLaborDay(d, m, y, w)
+            // Columbus Day (second Monday in October)
+            || isColumbusDay(d, m, y, w)
+            // Veteran's Day (Monday if Sunday)
+            || isVeteransDayNoSaturday(d, m, y, w)
+            // Thanksgiving Day (fourth Thursday in November)
+            || ((d >= 22 && d <= 28) && w == Thursday && m == November)
+            // Christmas (Monday if Sunday)
+            || ((d == 25 || (d == 26 && w == Monday)) && m == December))
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
     }
 

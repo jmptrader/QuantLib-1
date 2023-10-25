@@ -22,40 +22,66 @@
 */
 
 #include <ql/processes/batesprocess.hpp>
-
 #include <ql/methods/finitedifferences/solvers/fdmbatessolver.hpp>
 #include <ql/pricingengines/vanilla/fdbatesvanillaengine.hpp>
 #include <ql/pricingengines/vanilla/fdhestonvanillaengine.hpp>
 
 namespace QuantLib {
 
+    QL_DEPRECATED_DISABLE_WARNING
+
     FdBatesVanillaEngine::FdBatesVanillaEngine(
-            const boost::shared_ptr<BatesModel>& model,
+            const ext::shared_ptr<BatesModel>& model,
             Size tGrid, Size xGrid, 
             Size vGrid, Size dampingSteps,
             const FdmSchemeDesc& schemeDesc)
     : GenericModelEngine<BatesModel,
                          DividendVanillaOption::arguments,
                          DividendVanillaOption::results>(model),
-       tGrid_(tGrid), xGrid_(xGrid),
-       vGrid_(vGrid), dampingSteps_(dampingSteps),
-       schemeDesc_(schemeDesc) {
-    }
+      explicitDividends_(false),
+      tGrid_(tGrid), xGrid_(xGrid),
+      vGrid_(vGrid), dampingSteps_(dampingSteps),
+      schemeDesc_(schemeDesc) {}
+
+    FdBatesVanillaEngine::FdBatesVanillaEngine(
+            const ext::shared_ptr<BatesModel>& model,
+            DividendSchedule dividends,
+            Size tGrid, Size xGrid, 
+            Size vGrid, Size dampingSteps,
+            const FdmSchemeDesc& schemeDesc)
+    : GenericModelEngine<BatesModel,
+                         DividendVanillaOption::arguments,
+                         DividendVanillaOption::results>(model),
+      dividends_(std::move(dividends)), explicitDividends_(true),
+      tGrid_(tGrid), xGrid_(xGrid),
+      vGrid_(vGrid), dampingSteps_(dampingSteps),
+      schemeDesc_(schemeDesc) {}
+
+    QL_DEPRECATED_ENABLE_WARNING
 
     void FdBatesVanillaEngine::calculate() const {
+
+        // dividends will eventually be moved out of arguments, but for now we need the switch
+        QL_DEPRECATED_DISABLE_WARNING
+        const DividendSchedule& passedDividends = explicitDividends_ ? dividends_ : arguments_.cashFlow;
+        QL_DEPRECATED_ENABLE_WARNING
+
         FdHestonVanillaEngine helperEngine(model_.currentLink(),
+                                           passedDividends,
                                            tGrid_, xGrid_, vGrid_,
                                            dampingSteps_, schemeDesc_);
 
+        QL_DEPRECATED_DISABLE_WARNING
         *dynamic_cast<DividendVanillaOption::arguments*>(
                                helperEngine.getArguments()) = arguments_;
+        QL_DEPRECATED_ENABLE_WARNING
 
         FdmSolverDesc solverDesc = helperEngine.getSolverDesc(2.0);
 
-        const boost::shared_ptr<BatesProcess> process =
-                boost::dynamic_pointer_cast<BatesProcess>(model_->process());
+        const ext::shared_ptr<BatesProcess> process =
+                ext::dynamic_pointer_cast<BatesProcess>(model_->process());
 
-        boost::shared_ptr<FdmBatesSolver> solver(
+        ext::shared_ptr<FdmBatesSolver> solver(
             new FdmBatesSolver(Handle<BatesProcess>(process),
                                solverDesc, schemeDesc_));
 

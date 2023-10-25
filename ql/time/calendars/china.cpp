@@ -26,8 +26,8 @@ namespace QuantLib {
 
     China::China(Market m) {
         // all calendar instances share the same implementation instance
-        static boost::shared_ptr<Calendar::Impl> sseImpl(new China::SseImpl);
-        static boost::shared_ptr<Calendar::Impl> IBImpl(new China::IbImpl);
+        static ext::shared_ptr<Calendar::Impl> sseImpl(new China::SseImpl);
+        static ext::shared_ptr<Calendar::Impl> IBImpl(new China::IbImpl);
         switch (m) {
           case SSE:
             impl_ = sseImpl;
@@ -63,6 +63,14 @@ namespace QuantLib {
             || (y == 2013 && d <= 3 && m == January)
             || (y == 2014 && d == 1 && m == January)
             || (y == 2015 && d <= 3 && m == January)
+            || (y == 2017 && d == 2 && m == January)
+            || (y == 2018 && d == 1 && m == January)
+            || (y == 2018 && d == 31 && m == December)
+            || (y == 2019 && d == 1 && m == January)
+            || (y == 2020 && d == 1 && m == January)
+            || (y == 2021 && d == 1 && m == January)
+            || (y == 2022 && d == 3 && m == January)
+            || (y == 2023 && d == 2 && m == January)
             // Chinese New Year
             || (y == 2004 && d >= 19 && d <= 28 && m == January)
             || (y == 2005 && d >=  7 && d <= 15 && m == February)
@@ -79,6 +87,14 @@ namespace QuantLib {
             || (y == 2014 && d <= 6 && m == February)
             || (y == 2015 && d >= 18 && d <= 24 && m == February)
             || (y == 2016 && d >= 8 && d <= 12 && m == February)
+            || (y == 2017 && ((d >= 27 && m == January) ||
+                              (d <= 2 && m == February)))
+            || (y == 2018 && (d >= 15 && d <= 21 && m == February))
+            || (y == 2019 && d >= 4 && d <= 8 && m == February)
+            || (y == 2020 && (d == 24 || (d >= 27 && d <= 31)) && m == January)
+            || (y == 2021 && (d == 11 || d == 12 || d == 15 || d == 16 || d == 17) && m == February)
+            || (y == 2022 && ((d == 31 && m == January) || (d <= 4 && m == February)))
+            || (y == 2023 && d >= 23 && d <= 27 && m == January)
             // Ching Ming Festival
             || (y <= 2008 && d == 4 && m == April)
             || (y == 2009 && d == 6 && m == April)
@@ -89,6 +105,13 @@ namespace QuantLib {
             || (y == 2014 && d == 7 && m == April)
             || (y == 2015 && d >= 5 && d <= 6 && m == April)
             || (y == 2016 && d == 4 && m == April)
+            || (y == 2017 && d >= 3 && d <= 4 && m == April)
+            || (y == 2018 && d >= 5 && d <= 6 && m == April)
+            || (y == 2019 && d == 5 && m == April)
+            || (y == 2020 && d == 6 && m == April)
+            || (y == 2021 && d == 5 && m == April)
+            || (y == 2022 && d >= 4 && d <= 5 && m == April)
+            || (y == 2023 && d == 5 && m == April)
             // Labor Day
             || (y <= 2007 && d >= 1 && d <= 7 && m == May)
             || (y == 2008 && d >= 1 && d <= 2 && m == May)
@@ -102,6 +125,13 @@ namespace QuantLib {
             || (y == 2014 && d >= 1 && d <=3 && m == May)
             || (y == 2015 && d == 1 && m == May)
             || (y == 2016 && d >= 1 && d <=2 && m == May)
+            || (y == 2017 && d == 1 && m == May)
+            || (y == 2018 && ((d == 30 && m == April) || (d == 1 && m == May)))
+            || (y == 2019 && d >= 1 && d <=3 && m == May)
+            || (y == 2020 && (d == 1 || d == 4 || d == 5) && m == May)
+            || (y == 2021 && (d == 3 || d == 4 || d == 5) && m == May)
+            || (y == 2022 && d >= 2 && d <= 4 && m == May)
+            || (y == 2023 && d >= 1 && d <= 3 && m == May)
             // Tuen Ng Festival
             || (y <= 2008 && d == 9 && m == June)
             || (y == 2009 && (d == 28 || d == 29) && m == May)
@@ -112,6 +142,13 @@ namespace QuantLib {
             || (y == 2014 && d == 2 && m == June)
             || (y == 2015 && d == 22 && m == June)
             || (y == 2016 && d >= 9 && d <= 10 && m == June)
+            || (y == 2017 && d >= 29 && d <= 30 && m == May)
+            || (y == 2018 && d == 18 && m == June)
+            || (y == 2019 && d == 7 && m == June)
+            || (y == 2020 && d >= 25 && d <= 26 && m == June)
+            || (y == 2021 && d == 14 && m == June)
+            || (y == 2022 && d == 3 && m == June)
+            || (y == 2023 && d >= 22 && d <= 23 && m == June)
             // Mid-Autumn Festival
             || (y <= 2008 && d == 15 && m == September)
             || (y == 2010 && d >= 22 && d <= 24 && m == September)
@@ -121,8 +158,13 @@ namespace QuantLib {
             || (y == 2014 && d == 8 && m == September)
             || (y == 2015 && d == 27 && m == September)
             || (y == 2016 && d >= 15 && d <= 16 && m == September)
+            || (y == 2018 && d == 24 && m == September)
+            || (y == 2019 && d == 13 && m == September)
+            || (y == 2021 && (d == 20 || d == 21) && m == September)
+            || (y == 2022 && d == 12 && m == September)
+            || (y == 2023 && d == 29 && m == September)
             // National Day
-            || (y <= 2007 && d >= 1 && d <= 7 && m == October)
+            || (y <= 2007 && d >= 1 && d <= 7 && m == October) 
             || (y == 2008 && ((d >= 29 && m == September) ||
                               (d <= 3 && m == October)))
             || (y == 2009 && d >= 1 && d <= 8 && m == October)
@@ -133,10 +175,18 @@ namespace QuantLib {
             || (y == 2014 && d >= 1 && d <= 7 && m == October)
             || (y == 2015 && d >= 1 && d <= 7 && m == October)
             || (y == 2016 && d >= 3 && d <= 7 && m == October)
+            || (y == 2017 && d >= 2 && d <= 6 && m == October)
+            || (y == 2018 && d >= 1 && d <= 5 && m == October)
+            || (y == 2019 && d >= 1 && d <= 7 && m == October)
+            || (y == 2020 && d >= 1 && d <= 2 && m == October)
+            || (y == 2020 && d >= 5 && d <= 8 && m == October)
+            || (y == 2021 && (d == 1 || d == 4 || d == 5 || d == 6 || d == 7) && m == October)
+            || (y == 2022 && d >= 3 && d <= 7 && m == October)
+            || (y == 2023 && d >= 2 && d <= 6 && m == October)
             // 70th anniversary of the victory of anti-Japaneses war
             || (y == 2015 && d >= 3 && d <= 4 && m == September)
             )
-            return false;
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
     }
 
@@ -236,7 +286,59 @@ namespace QuantLib {
             Date(12,June,2016),
             Date(18,September,2016),
             Date(8,October,2016),
-            Date(9,October,2016)
+            Date(9,October,2016),
+            // 2017
+            Date(22,January,2017),
+            Date(4,February,2017),
+            Date(1,April,2017),
+            Date(27,May,2017),
+            Date(30,September,2017),
+            // 2018
+            Date(11, February, 2018),
+            Date(24, February, 2018),
+            Date(8, April, 2018),
+            Date(28, April, 2018),
+            Date(29, September, 2018),
+            Date(30, September, 2018),
+            Date(29, December, 2018),
+            // 2019
+            Date(2, February, 2019),
+            Date(3, February, 2019),
+            Date(28, April, 2019),
+            Date(5, May, 2019),
+            Date(29, September, 2019),
+            Date(12, October, 2019),
+            // 2020
+            Date(19, January, 2020),
+            Date(26, April, 2020),
+            Date(9, May, 2020),
+            Date(28, June, 2020),
+            Date(27, September, 2020),
+            Date(10, October, 2020),
+            // 2021
+            Date(7, February, 2021),
+            Date(20, February, 2021),
+            Date(25, April, 2021),
+            Date(8, May, 2021),
+            Date(18, September, 2021),
+            Date(26, September, 2021),
+            Date(9, October, 2021),
+            // 2022
+            Date(29, January, 2022),
+            Date(30, January, 2022),
+            Date(2, April, 2022),
+            Date(24, April, 2022),
+            Date(7, May, 2022),
+            Date(8, October, 2022),
+            Date(9, October, 2022),
+            // 2023
+            Date(28, January, 2023),
+            Date(29, January, 2023),
+            Date(23, April, 2023),
+            Date(6, May, 2023),
+            Date(25, June, 2023),
+            Date(7, October, 2023),
+            Date(8, October, 2023)
         };
         static const Size n =
             sizeof(working_weekends)/sizeof(working_weekends[0]);

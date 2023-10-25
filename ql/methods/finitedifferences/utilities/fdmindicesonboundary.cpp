@@ -25,20 +25,17 @@
 
 namespace QuantLib {
     FdmIndicesOnBoundary::FdmIndicesOnBoundary(
-        const boost::shared_ptr<FdmLinearOpLayout>& layout,
+        const ext::shared_ptr<FdmLinearOpLayout>& layout,
         Size direction, FdmDirichletBoundary::Side side) {
 
         std::vector<Size> newDim(layout->dim());
         newDim[direction] = 1;
         const Size hyperSize
-            = std::accumulate(newDim.begin(), newDim.end(), Size(1),
-                              std::multiplies<Size>());
+            = std::accumulate(newDim.begin(), newDim.end(), Size(1), std::multiplies<>());
         indices_.resize(hyperSize);
 
         Size i=0;
-        const FdmLinearOpIterator endIter = layout->end();
-        for (FdmLinearOpIterator iter = layout->begin(); iter != endIter;
-            ++iter) {
+        for (const auto& iter : *layout) {
             if (   (   side == FdmDirichletBoundary::Lower
                     && iter.coordinates()[direction] == 0)
                 || (   side == FdmDirichletBoundary::Upper

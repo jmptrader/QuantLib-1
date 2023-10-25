@@ -22,42 +22,34 @@
     computations such as "Yield to Price" or "Price to Yield"
  */
 
-// the only header you need to use QuantLib
-#include <ql/quantlib.hpp>
+#include <ql/qldefines.hpp>
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
+#  include <ql/auto_link.hpp>
+#endif
+#include <ql/instruments/bonds/zerocouponbond.hpp>
+#include <ql/instruments/bonds/floatingratebond.hpp>
+#include <ql/pricingengines/bond/discountingbondengine.hpp>
+#include <ql/cashflows/couponpricer.hpp>
+#include <ql/termstructures/yield/piecewiseyieldcurve.hpp>
+#include <ql/termstructures/yield/bondhelpers.hpp>
+#include <ql/termstructures/volatility/optionlet/constantoptionletvol.hpp>
+#include <ql/indexes/ibor/euribor.hpp>
+#include <ql/indexes/ibor/usdlibor.hpp>
+#include <ql/time/calendars/target.hpp>
+#include <ql/time/calendars/unitedstates.hpp>
+#include <ql/time/daycounters/actualactual.hpp>
+#include <ql/time/daycounters/actual360.hpp>
+#include <ql/time/daycounters/thirty360.hpp>
 
-#include <boost/timer.hpp>
 #include <iostream>
 #include <iomanip>
 
 using namespace QuantLib;
 
-#ifdef BOOST_MSVC
-#  ifdef QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN
-#    include <ql/auto_link.hpp>
-#    define BOOST_LIB_NAME boost_system
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#    define BOOST_LIB_NAME boost_thread
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#  endif
-#endif
-
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-Integer sessionId() { return 0; }
-
-}
-#endif
-
-
 int main(int, char* []) {
 
     try {
 
-        boost::timer timer;
         std::cout << std::endl;
 
         /*********************
@@ -102,27 +94,27 @@ int main(int, char* []) {
          Rate zc6mQuote=0.0145;
          Rate zc1yQuote=0.0194;
 
-         boost::shared_ptr<Quote> zc3mRate(new SimpleQuote(zc3mQuote));
-         boost::shared_ptr<Quote> zc6mRate(new SimpleQuote(zc6mQuote));
-         boost::shared_ptr<Quote> zc1yRate(new SimpleQuote(zc1yQuote));
+         auto zc3mRate = ext::make_shared<SimpleQuote>(zc3mQuote);
+         auto zc6mRate = ext::make_shared<SimpleQuote>(zc6mQuote);
+         auto zc1yRate = ext::make_shared<SimpleQuote>(zc1yQuote);
 
          DayCounter zcBondsDayCounter = Actual365Fixed();
 
-         boost::shared_ptr<RateHelper> zc3m(new DepositRateHelper(
+         auto zc3m = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(zc3mRate),
                  3*Months, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, zcBondsDayCounter));
-         boost::shared_ptr<RateHelper> zc6m(new DepositRateHelper(
+                 true, zcBondsDayCounter);
+         auto zc6m = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(zc6mRate),
                  6*Months, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, zcBondsDayCounter));
-         boost::shared_ptr<RateHelper> zc1y(new DepositRateHelper(
+                 true, zcBondsDayCounter);
+         auto zc1y = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(zc1yRate),
                  1*Years, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, zcBondsDayCounter));
+                 true, zcBondsDayCounter);
 
         // setup bonds
         Real redemption = 100.0;
@@ -161,10 +153,9 @@ int main(int, char* []) {
                 102.140625
         };
 
-        std::vector< boost::shared_ptr<SimpleQuote> > quote;
-        for (Size i=0; i<numberOfBonds; i++) {
-            boost::shared_ptr<SimpleQuote> cp(new SimpleQuote(marketQuotes[i]));
-            quote.push_back(cp);
+        std::vector<ext::shared_ptr<SimpleQuote>> quote;
+        for (Real marketQuote : marketQuotes) {
+            quote.push_back(ext::make_shared<SimpleQuote>(marketQuote));
         }
 
         RelinkableHandle<Quote> quoteHandle[numberOfBonds];
@@ -173,14 +164,14 @@ int main(int, char* []) {
         }
 
         // Definition of the rate helpers
-        std::vector<boost::shared_ptr<BondHelper> > bondsHelpers;
+        std::vector<ext::shared_ptr<BondHelper>> bondsHelpers;
 
         for (Size i=0; i<numberOfBonds; i++) {
 
             Schedule schedule(issueDates[i], maturities[i], Period(Semiannual), UnitedStates(UnitedStates::GovernmentBond),
                     Unadjusted, Unadjusted, DateGeneration::Backward, false);
 
-            boost::shared_ptr<FixedRateBondHelper> bondHelper(new FixedRateBondHelper(
+            auto bondHelper = ext::make_shared<FixedRateBondHelper>(
                     quoteHandle[i],
                     settlementDays,
                     100.0,
@@ -189,13 +180,12 @@ int main(int, char* []) {
                     ActualActual(ActualActual::Bond),
                     Unadjusted,
                     redemption,
-                    issueDates[i]));
+                    issueDates[i]);
 
             // the above could also be done by creating a
             // FixedRateBond instance and writing:
             //
-            // boost::shared_ptr<BondHelper> bondHelper(
-            //         new BondHelper(quoteHandle[i], bond));
+            // auto bondHelper = ext::make_shared<BondHelper>(quoteHandle[i], bond);
             //
             // This would also work for bonds that still don't have a
             // specialized helper, such as floating-rate bonds.
@@ -213,10 +203,8 @@ int main(int, char* []) {
          DayCounter termStructureDayCounter =
              ActualActual(ActualActual::ISDA);
 
-         double tolerance = 1.0e-15;
-
          // A depo-bond curve
-         std::vector<boost::shared_ptr<RateHelper> > bondInstruments;
+         std::vector<ext::shared_ptr<RateHelper>> bondInstruments;
 
          // Adding the ZC bonds to the curve for the short end
          bondInstruments.push_back(zc3m);
@@ -228,11 +216,8 @@ int main(int, char* []) {
              bondInstruments.push_back(bondsHelpers[i]);
          }
 
-         boost::shared_ptr<YieldTermStructure> bondDiscountingTermStructure(
-                 new PiecewiseYieldCurve<Discount,LogLinear>(
-                         settlementDate, bondInstruments,
-                         termStructureDayCounter,
-                         tolerance));
+         auto bondDiscountingTermStructure = ext::make_shared<PiecewiseYieldCurve<Discount,LogLinear>>(
+                         settlementDate, bondInstruments, termStructureDayCounter);
 
          // Building of the Libor forecasting curve
          // deposits
@@ -259,18 +244,18 @@ int main(int, char* []) {
          // or some kind of data feed.
 
          // deposits
-         boost::shared_ptr<Quote> d1wRate(new SimpleQuote(d1wQuote));
-         boost::shared_ptr<Quote> d1mRate(new SimpleQuote(d1mQuote));
-         boost::shared_ptr<Quote> d3mRate(new SimpleQuote(d3mQuote));
-         boost::shared_ptr<Quote> d6mRate(new SimpleQuote(d6mQuote));
-         boost::shared_ptr<Quote> d9mRate(new SimpleQuote(d9mQuote));
-         boost::shared_ptr<Quote> d1yRate(new SimpleQuote(d1yQuote));
+         auto d1wRate = ext::make_shared<SimpleQuote>(d1wQuote);
+         auto d1mRate = ext::make_shared<SimpleQuote>(d1mQuote);
+         auto d3mRate = ext::make_shared<SimpleQuote>(d3mQuote);
+         auto d6mRate = ext::make_shared<SimpleQuote>(d6mQuote);
+         auto d9mRate = ext::make_shared<SimpleQuote>(d9mQuote);
+         auto d1yRate = ext::make_shared<SimpleQuote>(d1yQuote);
          // swaps
-         boost::shared_ptr<Quote> s2yRate(new SimpleQuote(s2yQuote));
-         boost::shared_ptr<Quote> s3yRate(new SimpleQuote(s3yQuote));
-         boost::shared_ptr<Quote> s5yRate(new SimpleQuote(s5yQuote));
-         boost::shared_ptr<Quote> s10yRate(new SimpleQuote(s10yQuote));
-         boost::shared_ptr<Quote> s15yRate(new SimpleQuote(s15yQuote));
+         auto s2yRate = ext::make_shared<SimpleQuote>(s2yQuote);
+         auto s3yRate = ext::make_shared<SimpleQuote>(s3yQuote);
+         auto s5yRate = ext::make_shared<SimpleQuote>(s5yQuote);
+         auto s10yRate = ext::make_shared<SimpleQuote>(s10yQuote);
+         auto s15yRate = ext::make_shared<SimpleQuote>(s15yQuote);
 
          /*********************
           ***  RATE HELPERS ***
@@ -284,70 +269,70 @@ int main(int, char* []) {
          // deposits
          DayCounter depositDayCounter = Actual360();
 
-         boost::shared_ptr<RateHelper> d1w(new DepositRateHelper(
+         auto d1w = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(d1wRate),
                  1*Weeks, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, depositDayCounter));
-         boost::shared_ptr<RateHelper> d1m(new DepositRateHelper(
+                 true, depositDayCounter);
+         auto d1m = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(d1mRate),
                  1*Months, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, depositDayCounter));
-         boost::shared_ptr<RateHelper> d3m(new DepositRateHelper(
+                 true, depositDayCounter);
+         auto d3m = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(d3mRate),
                  3*Months, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, depositDayCounter));
-         boost::shared_ptr<RateHelper> d6m(new DepositRateHelper(
+                 true, depositDayCounter);
+         auto d6m = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(d6mRate),
                  6*Months, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, depositDayCounter));
-         boost::shared_ptr<RateHelper> d9m(new DepositRateHelper(
+                 true, depositDayCounter);
+         auto d9m = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(d9mRate),
                  9*Months, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, depositDayCounter));
-         boost::shared_ptr<RateHelper> d1y(new DepositRateHelper(
+                 true, depositDayCounter);
+         auto d1y = ext::make_shared<DepositRateHelper>(
                  Handle<Quote>(d1yRate),
                  1*Years, fixingDays,
                  calendar, ModifiedFollowing,
-                 true, depositDayCounter));
+                 true, depositDayCounter);
 
          // setup swaps
-         Frequency swFixedLegFrequency = Annual;
-         BusinessDayConvention swFixedLegConvention = Unadjusted;
-         DayCounter swFixedLegDayCounter = Thirty360(Thirty360::European);
-         boost::shared_ptr<IborIndex> swFloatingLegIndex(new Euribor6M);
+         auto swFixedLegFrequency = Annual;
+         auto swFixedLegConvention = Unadjusted;
+         auto swFixedLegDayCounter = Thirty360(Thirty360::European);
+         auto swFloatingLegIndex = ext::make_shared<Euribor6M>();
 
          const Period forwardStart(1*Days);
 
-         boost::shared_ptr<RateHelper> s2y(new SwapRateHelper(
+         auto s2y = ext::make_shared<SwapRateHelper>(
                  Handle<Quote>(s2yRate), 2*Years,
                  calendar, swFixedLegFrequency,
                  swFixedLegConvention, swFixedLegDayCounter,
-                 swFloatingLegIndex, Handle<Quote>(),forwardStart));
-         boost::shared_ptr<RateHelper> s3y(new SwapRateHelper(
+                 swFloatingLegIndex, Handle<Quote>(), forwardStart);
+         auto s3y = ext::make_shared<SwapRateHelper>(
                  Handle<Quote>(s3yRate), 3*Years,
                  calendar, swFixedLegFrequency,
                  swFixedLegConvention, swFixedLegDayCounter,
-                 swFloatingLegIndex, Handle<Quote>(),forwardStart));
-         boost::shared_ptr<RateHelper> s5y(new SwapRateHelper(
+                 swFloatingLegIndex, Handle<Quote>(), forwardStart);
+         auto s5y = ext::make_shared<SwapRateHelper>(
                  Handle<Quote>(s5yRate), 5*Years,
                  calendar, swFixedLegFrequency,
                  swFixedLegConvention, swFixedLegDayCounter,
-                 swFloatingLegIndex, Handle<Quote>(),forwardStart));
-         boost::shared_ptr<RateHelper> s10y(new SwapRateHelper(
+                 swFloatingLegIndex, Handle<Quote>(), forwardStart);
+         auto s10y = ext::make_shared<SwapRateHelper>(
                  Handle<Quote>(s10yRate), 10*Years,
                  calendar, swFixedLegFrequency,
                  swFixedLegConvention, swFixedLegDayCounter,
-                 swFloatingLegIndex, Handle<Quote>(),forwardStart));
-         boost::shared_ptr<RateHelper> s15y(new SwapRateHelper(
+                 swFloatingLegIndex, Handle<Quote>(), forwardStart);
+         auto s15y = ext::make_shared<SwapRateHelper>(
                  Handle<Quote>(s15yRate), 15*Years,
                  calendar, swFixedLegFrequency,
                  swFixedLegConvention, swFixedLegDayCounter,
-                 swFloatingLegIndex, Handle<Quote>(),forwardStart));
+                 swFloatingLegIndex, Handle<Quote>(), forwardStart);
 
 
          /*********************
@@ -358,7 +343,7 @@ int main(int, char* []) {
          // ActualActual::ISDA ensures that 30 years is 30.0
 
          // A depo-swap curve
-         std::vector<boost::shared_ptr<RateHelper> > depoSwapInstruments;
+         std::vector<ext::shared_ptr<RateHelper>> depoSwapInstruments;
          depoSwapInstruments.push_back(d1w);
          depoSwapInstruments.push_back(d1m);
          depoSwapInstruments.push_back(d3m);
@@ -370,11 +355,9 @@ int main(int, char* []) {
          depoSwapInstruments.push_back(s5y);
          depoSwapInstruments.push_back(s10y);
          depoSwapInstruments.push_back(s15y);
-         boost::shared_ptr<YieldTermStructure> depoSwapTermStructure(
-                 new PiecewiseYieldCurve<Discount,LogLinear>(
+         auto depoSwapTermStructure = ext::make_shared<PiecewiseYieldCurve<Discount, LogLinear>>(
                          settlementDate, depoSwapInstruments,
-                         termStructureDayCounter,
-                         tolerance));
+                         termStructureDayCounter);
 
          // Term structures that will be used for pricing:
          // the one used for discounting cash flows
@@ -390,8 +373,7 @@ int main(int, char* []) {
          Real faceAmount = 100;
 
          // Pricing engine
-         boost::shared_ptr<PricingEngine> bondEngine(
-                 new DiscountingBondEngine(discountingTermStructure));
+         auto bondEngine = ext::make_shared<DiscountingBondEngine>(discountingTermStructure);
 
          // Zero coupon bond
          ZeroCouponBond zeroCouponBond(
@@ -426,8 +408,7 @@ int main(int, char* []) {
          // Should and will be priced on another curve later...
 
          RelinkableHandle<YieldTermStructure> liborTermStructure;
-         const boost::shared_ptr<IborIndex> libor3m(
-                 new USDLibor(Period(3,Months),liborTermStructure));
+         const auto libor3m = ext::make_shared<USDLibor>(Period(3, Months), liborTermStructure);
          libor3m->addFixing(Date(17, July, 2008),0.0278625);
 
          Schedule floatingBondSchedule(Date(21, October, 2005),
@@ -459,19 +440,18 @@ int main(int, char* []) {
          floatingRateBond.setPricingEngine(bondEngine);
 
          // Coupon pricers
-         boost::shared_ptr<IborCouponPricer> pricer(new BlackIborCouponPricer);
+         auto pricer = ext::make_shared<BlackIborCouponPricer>();
 
          // optionLet volatilities
          Volatility volatility = 0.0;
          Handle<OptionletVolatilityStructure> vol;
          vol = Handle<OptionletVolatilityStructure>(
-                 boost::shared_ptr<OptionletVolatilityStructure>(new
-                         ConstantOptionletVolatility(
+                 ext::make_shared<ConstantOptionletVolatility>(
                                  settlementDays,
                                  calendar,
                                  ModifiedFollowing,
                                  volatility,
-                                 Actual365Fixed())));
+                                 Actual365Fixed()));
 
          pricer->setCapletVolatility(vol);
          setCouponPricer(floatingRateBond.cashflows(),pricer);
@@ -498,13 +478,8 @@ int main(int, char* []) {
          << std::setw(widths[3]) << "Floating"
          << std::endl;
 
-         std::string separator = " | ";
-         Size width = widths[0]
-                             + widths[1]
-                                      + widths[2]
-                                               + widths[3];
-         std::string rule(width, '-'), dblrule(width, '=');
-         std::string tab(8, ' ');
+         Size width = widths[0] + widths[1] + widths[2] + widths[3];
+         std::string rule(width, '-');
 
          std::cout << rule << std::endl;
 
@@ -570,19 +545,6 @@ int main(int, char* []) {
 
          /* "Yield to Price"
             "Price to Yield" */
-
-         double seconds = timer.elapsed();
-         Integer hours = int(seconds/3600);
-         seconds -= hours * 3600;
-         Integer minutes = int(seconds/60);
-         seconds -= minutes * 60;
-         std::cout << " \nRun completed in ";
-         if (hours > 0)
-             std::cout << hours << " h ";
-         if (hours > 0 || minutes > 0)
-             std::cout << minutes << " m ";
-         std::cout << std::fixed << std::setprecision(0)
-         << seconds << " s\n" << std::endl;
 
          return 0;
 

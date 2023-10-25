@@ -19,11 +19,13 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include <ql/exercise.hpp>
 #include <ql/instruments/barrieroption.hpp>
+#include <ql/instruments/dividendbarrieroption.hpp>
 #include <ql/instruments/impliedvolatility.hpp>
 #include <ql/pricingengines/barrier/analyticbarrierengine.hpp>
-#include <ql/exercise.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <ql/pricingengines/barrier/fdblackscholesbarrierengine.hpp>
+#include <memory>
 
 namespace QuantLib {
 
@@ -31,8 +33,8 @@ namespace QuantLib {
         Barrier::Type barrierType,
         Real barrier,
         Real rebate,
-        const boost::shared_ptr<StrikedTypePayoff>& payoff,
-        const boost::shared_ptr<Exercise>& exercise)
+        const ext::shared_ptr<StrikedTypePayoff>& payoff,
+        const ext::shared_ptr<Exercise>& exercise)
     : OneAssetOption(payoff, exercise),
       barrierType_(barrierType), barrier_(barrier), rebate_(rebate) {}
 
@@ -40,35 +42,58 @@ namespace QuantLib {
 
         OneAssetOption::setupArguments(args);
 
-        BarrierOption::arguments* moreArgs =
-            dynamic_cast<BarrierOption::arguments*>(args);
-        QL_REQUIRE(moreArgs != 0, "wrong argument type");
+        auto* moreArgs = dynamic_cast<BarrierOption::arguments*>(args);
+        QL_REQUIRE(moreArgs != nullptr, "wrong argument type");
         moreArgs->barrierType = barrierType_;
         moreArgs->barrier = barrier_;
         moreArgs->rebate = rebate_;
+
+        /* this is a workaround in case an engine is used for both barrier
+           and dividend options.  The dividends might have been set by another
+           instrument and need to be cleared. */
+        QL_DEPRECATED_DISABLE_WARNING
+        auto* arguments = dynamic_cast<DividendBarrierOption::arguments*>(args);
+        if (arguments != nullptr) {
+            arguments->cashFlow.clear();
+        }
+        QL_DEPRECATED_ENABLE_WARNING
     }
 
 
     Volatility BarrierOption::impliedVolatility(
              Real targetValue,
-             const boost::shared_ptr<GeneralizedBlackScholesProcess>& process,
+             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
              Real accuracy,
              Size maxEvaluations,
              Volatility minVol,
              Volatility maxVol) const {
+        return impliedVolatility(targetValue, process, DividendSchedule(),
+                                 accuracy, maxEvaluations, minVol, maxVol);
+    }
 
+    Volatility BarrierOption::impliedVolatility(
+             Real targetValue,
+             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
+             const DividendSchedule& dividends,
+             Real accuracy,
+             Size maxEvaluations,
+             Volatility minVol,
+             Volatility maxVol) const {
         QL_REQUIRE(!isExpired(), "option expired");
 
-        boost::shared_ptr<SimpleQuote> volQuote(new SimpleQuote);
+        ext::shared_ptr<SimpleQuote> volQuote(new SimpleQuote);
 
-        boost::shared_ptr<GeneralizedBlackScholesProcess> newProcess =
+        ext::shared_ptr<GeneralizedBlackScholesProcess> newProcess =
             detail::ImpliedVolatilityHelper::clone(process, volQuote);
 
         // engines are built-in for the time being
-        boost::scoped_ptr<PricingEngine> engine;
+        std::unique_ptr<PricingEngine> engine;
         switch (exercise_->type()) {
           case Exercise::European:
-            engine.reset(new AnalyticBarrierEngine(newProcess));
+            if (dividends.empty())
+                engine = std::make_unique<AnalyticBarrierEngine>(newProcess);
+            else
+                engine = std::make_unique<FdBlackScholesBarrierEngine>(newProcess, dividends);
             break;
           case Exercise::American:
           case Exercise::Bermudan:

@@ -24,52 +24,30 @@
     reader.
 */
 
-// the only header you need to use QuantLib
-#include <ql/quantlib.hpp>
-
-#ifdef BOOST_MSVC
-/* Uncomment the following lines to unmask floating-point
-   exceptions. Warning: unpredictable results can arise...
-
-   See http://www.wilmott.com/messageview.cfm?catid=10&threadid=9481
-   Is there anyone with a definitive word about this?
-*/
-// #include <float.h>
-// namespace { unsigned int u = _controlfp(_EM_INEXACT, _MCW_EM); }
+#include <ql/qldefines.hpp>
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
+#  include <ql/auto_link.hpp>
 #endif
+#include <ql/instruments/compositeinstrument.hpp>
+#include <ql/instruments/barrieroption.hpp>
+#include <ql/instruments/europeanoption.hpp>
+#include <ql/pricingengines/barrier/analyticbarrierengine.hpp>
+#include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
+#include <ql/exercise.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
+#include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
+#include <ql/quotes/simplequote.hpp>
+#include <ql/time/calendars/nullcalendar.hpp>
 
-#include <boost/timer.hpp>
 #include <iostream>
 #include <iomanip>
 
 using namespace QuantLib;
 
-#ifdef BOOST_MSVC
-#  ifdef QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN
-#    include <ql/auto_link.hpp>
-#    define BOOST_LIB_NAME boost_system
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#    define BOOST_LIB_NAME boost_thread
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#  endif
-#endif
-
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-    Integer sessionId() { return 0; }
-
-}
-#endif
-
 int main(int, char* []) {
 
     try {
 
-        boost::timer timer;
         std::cout << std::endl;
 
         Date today(29, May, 2006);
@@ -81,11 +59,10 @@ int main(int, char* []) {
         Real rebate = 0.0;
         Option::Type type = Option::Put;
         Real underlyingValue = 100.0;
-        boost::shared_ptr<SimpleQuote> underlying(
-                                            new SimpleQuote(underlyingValue));
+        auto underlying = ext::make_shared<SimpleQuote>(underlyingValue);
         Real strike = 100.0;
-        boost::shared_ptr<SimpleQuote> riskFreeRate(new SimpleQuote(0.04));
-        boost::shared_ptr<SimpleQuote> volatility(new SimpleQuote(0.20));
+        auto riskFreeRate = ext::make_shared<SimpleQuote>(0.04);
+        auto volatility = ext::make_shared<SimpleQuote>(0.20);
         Date maturity = today + 1*Years;
 
         std::cout << std::endl ;
@@ -109,28 +86,19 @@ int main(int, char* []) {
         Handle<Quote> h1(riskFreeRate);
         Handle<Quote> h2(volatility);
         Handle<YieldTermStructure> flatRate(
-            boost::shared_ptr<YieldTermStructure>(
-                                  new FlatForward(0, NullCalendar(),
-                                                  h1, dayCounter)));
+            ext::make_shared<FlatForward>(0, NullCalendar(), h1, dayCounter));
         Handle<BlackVolTermStructure> flatVol(
-            boost::shared_ptr<BlackVolTermStructure>(
-                               new BlackConstantVol(0, NullCalendar(),
-                                                    h2, dayCounter)));
+            ext::make_shared<BlackConstantVol>(0, NullCalendar(), h2, dayCounter));
 
         // instantiate the option
-        boost::shared_ptr<Exercise> exercise(
-                                         new EuropeanExercise(maturity));
-        boost::shared_ptr<StrikedTypePayoff> payoff(
-                                        new PlainVanillaPayoff(type, strike));
+        auto exercise = ext::make_shared<EuropeanExercise>(maturity);
+        auto payoff = ext::make_shared<PlainVanillaPayoff>(type, strike);
 
-        boost::shared_ptr<BlackScholesProcess> bsProcess(
-                            new BlackScholesProcess(Handle<Quote>(underlying),
-                                                    flatRate, flatVol));
+        auto bsProcess = ext::make_shared<BlackScholesProcess>(
+            Handle<Quote>(underlying), flatRate, flatVol);
 
-        boost::shared_ptr<PricingEngine> barrierEngine(
-                                        new AnalyticBarrierEngine(bsProcess));
-        boost::shared_ptr<PricingEngine> europeanEngine(
-                                       new AnalyticEuropeanEngine(bsProcess));
+        auto barrierEngine = ext::make_shared<AnalyticBarrierEngine>(bsProcess);
+        auto europeanEngine = ext::make_shared<AnalyticEuropeanEngine>(bsProcess);
 
         BarrierOption referenceOption(barrierType, barrier, rebate,
                                       payoff, exercise);
@@ -150,26 +118,21 @@ int main(int, char* []) {
 
         // Final payoff first (the same for all portfolios):
         // as shown in Joshi, a put struck at K...
-        boost::shared_ptr<Instrument> put1(
-                                        new EuropeanOption(payoff, exercise));
+        auto put1 = ext::make_shared<EuropeanOption>(payoff, exercise);
         put1->setPricingEngine(europeanEngine);
         portfolio1.add(put1);
         portfolio2.add(put1);
         portfolio3.add(put1);
         // ...minus a digital put struck at B of notional K-B...
-        boost::shared_ptr<StrikedTypePayoff> digitalPayoff(
-                          new CashOrNothingPayoff(Option::Put, barrier, 1.0));
-        boost::shared_ptr<Instrument> digitalPut(
-                                 new EuropeanOption(digitalPayoff, exercise));
+        auto digitalPayoff = ext::make_shared<CashOrNothingPayoff>(Option::Put, barrier, 1.0);
+        auto digitalPut = ext::make_shared<EuropeanOption>(digitalPayoff, exercise);
         digitalPut->setPricingEngine(europeanEngine);
         portfolio1.subtract(digitalPut, strike-barrier);
         portfolio2.subtract(digitalPut, strike-barrier);
         portfolio3.subtract(digitalPut, strike-barrier);
         // ...minus a put option struck at B.
-        boost::shared_ptr<StrikedTypePayoff> lowerPayoff(
-                                new PlainVanillaPayoff(Option::Put, barrier));
-        boost::shared_ptr<Instrument> put2(
-                                   new EuropeanOption(lowerPayoff, exercise));
+        auto lowerPayoff = ext::make_shared<PlainVanillaPayoff>(Option::Put, barrier);
+        auto put2 = ext::make_shared<EuropeanOption>(lowerPayoff, exercise);
         put2->setPricingEngine(europeanEngine);
         portfolio1.subtract(put2);
         portfolio2.subtract(put2);
@@ -182,12 +145,9 @@ int main(int, char* []) {
         for (i=12; i>=1; i--) {
             // First, we instantiate the option...
             Date innerMaturity = today + i*Months;
-            boost::shared_ptr<Exercise> innerExercise(
-                                         new EuropeanExercise(innerMaturity));
-            boost::shared_ptr<StrikedTypePayoff> innerPayoff(
-                                new PlainVanillaPayoff(Option::Put, barrier));
-            boost::shared_ptr<Instrument> putn(
-                              new EuropeanOption(innerPayoff, innerExercise));
+            auto innerExercise = ext::make_shared<EuropeanExercise>(innerMaturity);
+            auto innerPayoff = ext::make_shared<PlainVanillaPayoff>(Option::Put, barrier);
+            auto putn = ext::make_shared<EuropeanOption>(innerPayoff, innerExercise);
             putn->setPricingEngine(europeanEngine);
             // ...second, we evaluate the current portfolio and the
             // latest put at (B,t)...
@@ -221,12 +181,9 @@ int main(int, char* []) {
         for (i=52; i>=2; i-=2) {
             // Same as above.
             Date innerMaturity = today + i*Weeks;
-            boost::shared_ptr<Exercise> innerExercise(
-                                         new EuropeanExercise(innerMaturity));
-            boost::shared_ptr<StrikedTypePayoff> innerPayoff(
-                                new PlainVanillaPayoff(Option::Put, barrier));
-            boost::shared_ptr<Instrument> putn(
-                              new EuropeanOption(innerPayoff, innerExercise));
+            auto innerExercise = ext::make_shared<EuropeanExercise>(innerMaturity);
+            auto innerPayoff = ext::make_shared<PlainVanillaPayoff>(Option::Put, barrier);
+            auto putn = ext::make_shared<EuropeanOption>(innerPayoff, innerExercise);
             putn->setPricingEngine(europeanEngine);
             Date killDate = today + (i-2)*Weeks;
             Settings::instance().evaluationDate() = killDate;
@@ -252,12 +209,9 @@ int main(int, char* []) {
         for (i=52; i>=1; i--) {
             // Same as above.
             Date innerMaturity = today + i*Weeks;
-            boost::shared_ptr<Exercise> innerExercise(
-                                         new EuropeanExercise(innerMaturity));
-            boost::shared_ptr<StrikedTypePayoff> innerPayoff(
-                                new PlainVanillaPayoff(Option::Put, barrier));
-            boost::shared_ptr<Instrument> putn(
-                              new EuropeanOption(innerPayoff, innerExercise));
+            auto innerExercise = ext::make_shared<EuropeanExercise>(innerMaturity);
+            auto innerPayoff = ext::make_shared<PlainVanillaPayoff>(Option::Put, barrier);
+            auto putn = ext::make_shared<EuropeanOption>(innerPayoff, innerExercise);
             putn->setPricingEngine(europeanEngine);
             Date killDate = today + (i-1)*Weeks;
             Settings::instance().evaluationDate() = killDate;
@@ -379,19 +333,6 @@ int main(int, char* []) {
             << "risk-free rate are changed. Feel free to experiment with \n"
             << "the example and contribute a patch if you spot any errors."
             << std::endl;
-
-        double seconds = timer.elapsed();
-        Integer hours = int(seconds/3600);
-        seconds -= hours * 3600;
-        Integer minutes = int(seconds/60);
-        seconds -= minutes * 60;
-        std::cout << " \nRun completed in ";
-        if (hours > 0)
-            std::cout << hours << " h ";
-        if (hours > 0 || minutes > 0)
-            std::cout << minutes << " m ";
-        std::cout << std::fixed << std::setprecision(0)
-                  << seconds << " s\n" << std::endl;
 
         return 0;
     } catch (std::exception& e) {

@@ -19,7 +19,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file analyticcontinuousfixedlookback.hpp
+/*! \file analyticcontinuouspartialfixedlookback.hpp
     \brief Analytic engine for continuous fixed-strike lookback
 */
 
@@ -45,10 +45,11 @@ namespace QuantLib {
         : public ContinuousPartialFixedLookbackOption::engine {
       public:
         AnalyticContinuousPartialFixedLookbackEngine(
-            const boost::shared_ptr<GeneralizedBlackScholesProcess>& process);
-        void calculate() const;
+            ext::shared_ptr<GeneralizedBlackScholesProcess> process);
+        void calculate() const override;
+
       private:
-        boost::shared_ptr<GeneralizedBlackScholesProcess> process_;
+        ext::shared_ptr<GeneralizedBlackScholesProcess> process_;
         CumulativeNormalDistribution f_;
         // helper methods
         Real underlying() const;

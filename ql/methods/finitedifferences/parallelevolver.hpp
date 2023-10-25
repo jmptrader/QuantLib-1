@@ -39,12 +39,12 @@
 
 namespace QuantLib {
 
-    //! Parallel evolver for multiple arrays
-    /*! \ingroup findiff */
-
+    /*! \deprecated Use the new finite-differences framework instead.
+                    Deprecated in version 1.32.
+    */
     template <typename array_type>
-    class StepConditionSet {
-        typedef boost::shared_ptr<StepCondition<array_type> > itemType;
+    class [[deprecated("Use the new finite-differences framework instead")]] StepConditionSet {
+        typedef ext::shared_ptr<StepCondition<array_type> > itemType;
         std::vector<itemType> stepConditions_;
       public:
         void applyTo(std::vector<array_type>& a, Time t) const {
@@ -70,21 +70,31 @@ namespace QuantLib {
         }
     };
 
+    /*! \deprecated Use the new finite-differences framework instead.
+                    Deprecated in version 1.32.
+    */
     template <typename traits>
-    class ParallelEvolverTraits {
+    class [[deprecated("Use the new finite-differences framework instead")]] ParallelEvolverTraits {
       public:
         typedef std::vector<typename traits::array_type> array_type;
         typedef std::vector<typename traits::operator_type> operator_type;
         typedef std::vector<typename traits::bc_type> bc_type;
         typedef BoundaryConditionSet<typename traits::bc_set> bc_set;
+        QL_DEPRECATED_DISABLE_WARNING
         typedef StepConditionSet<typename traits::array_type> condition_type;
+        QL_DEPRECATED_ENABLE_WARNING
     };
 
+    /*! \deprecated Use the new finite-differences framework instead.
+                    Deprecated in version 1.32.
+    */
     template <class Evolver>
-    class ParallelEvolver  {
+    class [[deprecated("Use the new finite-differences framework instead")]] ParallelEvolver  {
       public:
         // typedefs
+        QL_DEPRECATED_DISABLE_WARNING
         typedef ParallelEvolverTraits<typename Evolver::traits> traits;
+        QL_DEPRECATED_ENABLE_WARNING
         typedef typename traits::operator_type operator_type;
         typedef typename traits::array_type array_type;
         typedef typename traits::bc_set bc_set;
@@ -93,7 +103,7 @@ namespace QuantLib {
                         const bc_set& bcs) {
             evolvers_.reserve(L.size());
             for (Size i=0; i < L.size(); i++) {
-                evolvers_.push_back(boost::shared_ptr<Evolver>(new
+                evolvers_.push_back(ext::shared_ptr<Evolver>(new
                     Evolver(L[i], bcs[i])));
             }
         }
@@ -110,7 +120,7 @@ namespace QuantLib {
             }
         }
       private:
-        std::vector<boost::shared_ptr<Evolver> > evolvers_;
+        std::vector<ext::shared_ptr<Evolver> > evolvers_;
     };
 
 }

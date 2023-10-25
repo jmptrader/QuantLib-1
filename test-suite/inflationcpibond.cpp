@@ -36,13 +36,14 @@
 #include <ql/cashflows/cpicouponpricer.hpp>
 #include <ql/instruments/cpiswap.hpp>
 #include <ql/instruments/bonds/cpibond.hpp>
+#include <ql/cashflows/cashflows.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
 #include <iostream>
 
-namespace {
+namespace inflation_cpi_bond_test {
 
     struct Datum {
         Date date;
@@ -51,46 +52,40 @@ namespace {
 
     typedef BootstrapHelper<ZeroInflationTermStructure> Helper;
 
-    std::vector<boost::shared_ptr<Helper> > makeHelpers(
-        Datum iiData[], Size N,
-        const boost::shared_ptr<ZeroInflationIndex>& ii,
+    std::vector<ext::shared_ptr<Helper> > makeHelpers(
+        const std::vector<Datum>& iiData,
+        const ext::shared_ptr<ZeroInflationIndex>& ii,
         const Period& observationLag,
         const Calendar& calendar,
         const BusinessDayConvention& bdc,
-        const DayCounter& dc) {
+        const DayCounter& dc,
+        const Handle<YieldTermStructure>& yTS) {
 
-        std::vector<boost::shared_ptr<Helper> > instruments;
-        for (Size i=0; i<N; i++) {
-            Date maturity = iiData[i].date;
-            Handle<Quote> quote(boost::shared_ptr<Quote>(
-                                new SimpleQuote(iiData[i].rate/100.0)));
-            boost::shared_ptr<Helper> h(
-                      new ZeroCouponInflationSwapHelper(quote, observationLag,
-                                                        maturity, calendar,
-                                                        bdc, dc, ii));
+        std::vector<ext::shared_ptr<Helper> > instruments;
+        for (Datum datum : iiData) {
+            Date maturity = datum.date;
+            Handle<Quote> quote(ext::shared_ptr<Quote>(
+                                new SimpleQuote(datum.rate/100.0)));
+            ext::shared_ptr<Helper> h(new ZeroCouponInflationSwapHelper(
+                quote, observationLag, maturity, calendar, bdc, dc, ii, CPI::AsIndex, yTS));
             instruments.push_back(h);
         }
         return instruments;
     }
 
 
-    struct CommonVars {
-
+    struct CommonVars { // NOLINT(cppcoreguidelines-special-member-functions)
+    
         Calendar calendar;
         BusinessDayConvention convention;
         Date evaluationDate;
         Period observationLag;
         DayCounter dayCounter;
 
-        boost::shared_ptr<UKRPI> ii;
+        ext::shared_ptr<UKRPI> ii;
 
         RelinkableHandle<YieldTermStructure> yTS;
         RelinkableHandle<ZeroInflationTermStructure> cpiTS;
-
-        // cleanup
-
-        SavedSettings backup;
-        IndexHistoryCleaner cleaner;
 
         // setup
         CommonVars() {
@@ -100,7 +95,7 @@ namespace {
             Date today(25, November, 2009);
             evaluationDate = calendar.adjust(today);
             Settings::instance().evaluationDate() = evaluationDate;
-            dayCounter = ActualActual();
+            dayCounter = ActualActual(ActualActual::ISDA);
 
             Date from(20, July, 2007);
             Date to(20, November, 2009);
@@ -110,8 +105,7 @@ namespace {
                 .withCalendar(UnitedKingdom())
                 .withConvention(ModifiedFollowing);
 
-            bool interp = false;
-            ii = boost::shared_ptr<UKRPI>(new UKRPI(interp, cpiTS));
+            ii = ext::make_shared<UKRPI>(cpiTS);
 
             Real fixData[] = {
                 206.1, 207.3, 208.0, 208.9, 209.7, 210.9,
@@ -124,13 +118,13 @@ namespace {
                 ii->addFixing(rpiSchedule[i], fixData[i]);
             }
 
-            yTS.linkTo(boost::shared_ptr<YieldTermStructure>(
+            yTS.linkTo(ext::shared_ptr<YieldTermStructure>(
                           new FlatForward(evaluationDate, 0.05, dayCounter)));
 
             // now build the zero inflation curve
             observationLag = Period(2,Months);
 
-            Datum zciisData[] = {
+            std::vector<Datum> zciisData = {
                 { Date(25, November, 2010), 3.0495 },
                 { Date(25, November, 2011), 2.93 },
                 { Date(26, November, 2012), 2.9795 },
@@ -150,22 +144,21 @@ namespace {
                 { Date(25, November, 2059), 3.714 },
             };
 
-            std::vector<boost::shared_ptr<Helper> > helpers =
-                makeHelpers(zciisData, LENGTH(zciisData), ii,
-                            observationLag, calendar, convention, dayCounter);
+            std::vector<ext::shared_ptr<Helper> > helpers =
+                makeHelpers(zciisData, ii,
+                            observationLag, calendar, convention, dayCounter, yTS);
 
             Rate baseZeroRate = zciisData[0].rate/100.0;
-            cpiTS.linkTo(boost::shared_ptr<ZeroInflationTermStructure>(
+            cpiTS.linkTo(ext::shared_ptr<ZeroInflationTermStructure>(
                   new PiecewiseZeroInflationCurve<Linear>(
                          evaluationDate, calendar, dayCounter, observationLag,
-                         ii->frequency(),ii->interpolated(), baseZeroRate,
-                         Handle<YieldTermStructure>(yTS), helpers)));
+                         ii->frequency(), baseZeroRate, helpers)));
         }
 
         // teardown
         ~CommonVars() {
             // break circular references and allow curves to be destroyed
-            cpiTS.linkTo(boost::shared_ptr<ZeroInflationTermStructure>());
+            cpiTS.linkTo(ext::shared_ptr<ZeroInflationTermStructure>());
         }
     };
 
@@ -173,7 +166,9 @@ namespace {
 
 
 void InflationCPIBondTest::testCleanPrice() {
-    IndexManager::instance().clearHistories();
+    BOOST_TEST_MESSAGE("Checking cached pricers for CPI bond...");
+
+    using namespace inflation_cpi_bond_test;
   
     CommonVars common;
 
@@ -182,7 +177,7 @@ void InflationCPIBondTest::testCleanPrice() {
     DayCounter fixedDayCount = Actual365Fixed();
     BusinessDayConvention fixedPaymentConvention = ModifiedFollowing;
     Calendar fixedPaymentCalendar = UnitedKingdom();
-    boost::shared_ptr<ZeroInflationIndex> fixedIndex = common.ii;
+    ext::shared_ptr<ZeroInflationIndex> fixedIndex = common.ii;
     Period contractObservationLag = Period(3,Months);
     CPI::InterpolationType observationInterpolation = CPI::Flat;
     Natural settlementDays = 3;
@@ -204,27 +199,115 @@ void InflationCPIBondTest::testCleanPrice() {
                  observationInterpolation, fixedSchedule,
                  fixedRates, fixedDayCount, fixedPaymentConvention);
 
-    boost::shared_ptr<DiscountingBondEngine> engine(
-                                 new DiscountingBondEngine(common.yTS));
+    auto engine = ext::make_shared<DiscountingBondEngine>(common.yTS);
     bond.setPricingEngine(engine);
 
-    Real storedPrice = 383.01816406;
-    Real calculated = bond.cleanPrice();
+    Real storedPrice = 384.71666770;
+    Real calculated = bond.dirtyPrice();
     Real tolerance = 1.0e-8;
     if (std::fabs(calculated-storedPrice) > tolerance) {
+        BOOST_FAIL("failed to reproduce expected CPI-bond dirty price"
+                   << std::fixed << std::setprecision(12)
+                   << "\n  expected:   " << storedPrice
+                   << "\n  calculated: " << calculated);
+    }
+
+    storedPrice = 383.04297558;
+    calculated = bond.cleanPrice();
+    if (std::fabs(calculated-storedPrice) > tolerance) {
         BOOST_FAIL("failed to reproduce expected CPI-bond clean price"
-                   << QL_FIXED << std::setprecision(12)
+                   << std::fixed << std::setprecision(12)
                    << "\n  expected:   " << storedPrice
                    << "\n  calculated: " << calculated);
     }
 }
 
 
+void InflationCPIBondTest::testCPILegWithoutBaseCPI() {
+    BOOST_TEST_MESSAGE("Checking CPI leg with or without explicit base CPI fixing...");
+
+    using namespace inflation_cpi_bond_test;
+
+    CommonVars common;
+
+    Real notional = 1000000.0;
+    std::vector<Rate> fixedRates(1, 0.1);
+    DayCounter fixedDayCount = Actual365Fixed();
+    BusinessDayConvention fixedPaymentConvention = ModifiedFollowing;
+    Calendar fixedPaymentCalendar = UnitedKingdom();
+    ext::shared_ptr<ZeroInflationIndex> fixedIndex = common.ii;
+    Period contractObservationLag = Period(3, Months);
+    CPI::InterpolationType observationInterpolation = CPI::Flat;
+    Natural settlementDays = 3;
+    bool growthOnly = true;
+    Real baseCPI = 206.1;
+    // set the schedules
+    Date baseDate(1, July, 2007);
+    Date startDate(2, October, 2007);
+    Date endDate(2, October, 2052);
+    Schedule fixedSchedule = MakeSchedule()
+                                 .from(startDate)
+                                 .to(endDate)
+                                 .withTenor(Period(6, Months))
+                                 .withCalendar(fixedPaymentCalendar)
+                                 .withConvention(Unadjusted)
+                                 .backwards();
+
+    Leg legWithBaseDate = CPILeg(fixedSchedule, fixedIndex, Null<Real>(), contractObservationLag)
+                              .withSubtractInflationNominal(growthOnly)
+                              .withNotionals(notional)
+                              .withBaseDate(baseDate)
+                              .withFixedRates(fixedRates)
+                              .withPaymentDayCounter(fixedDayCount)
+                              .withObservationInterpolation(observationInterpolation)
+                              .withPaymentAdjustment(fixedPaymentConvention)
+                              .withPaymentCalendar(fixedPaymentCalendar);
+
+    Leg legWithBaseCPI = CPILeg(fixedSchedule, fixedIndex, baseCPI, contractObservationLag)
+                             .withSubtractInflationNominal(growthOnly)
+                             .withNotionals(notional)
+                             .withFixedRates(fixedRates)
+                             .withPaymentDayCounter(fixedDayCount)
+                             .withObservationInterpolation(observationInterpolation)
+                             .withPaymentAdjustment(fixedPaymentConvention)
+                             .withPaymentCalendar(fixedPaymentCalendar);
+
+    Date settlementDate = fixedPaymentCalendar.advance(common.evaluationDate, settlementDays * Days,
+                                                       fixedPaymentConvention);
+
+    Real npvWithBaseDate =
+        CashFlows::npv(legWithBaseDate, **common.yTS, false, settlementDate, settlementDate);
+    Real accruedsBaseDate = CashFlows::accruedAmount(legWithBaseDate, false, settlementDate);
+
+    Real npvWithBaseCPI =
+        CashFlows::npv(legWithBaseCPI, **common.yTS, false, settlementDate, settlementDate);
+    Real accruedsBaseCPI = CashFlows::accruedAmount(legWithBaseCPI, false, settlementDate);
+
+
+    Real cleanPriceWithBaseDate = (npvWithBaseDate - accruedsBaseDate) * 100. / notional;
+    Real cleanPriceWithBaseCPI = (npvWithBaseCPI - accruedsBaseCPI) * 100. / notional;
+
+    Real tolerance = 1.0e-8;
+    if (std::fabs(cleanPriceWithBaseDate - cleanPriceWithBaseCPI) > tolerance) {
+        BOOST_FAIL("prices of CPI leg with base date and explicit base CPI fixing are not equal "
+                   << std::fixed << std::setprecision(12)
+                   << "\n  clean npv of leg with baseDate:   " << cleanPriceWithBaseDate
+                   << "\n clean npv of leg with explicit baseCPI: " << cleanPriceWithBaseCPI);
+    }
+    // Compare to expected price
+    Real storedPrice = 383.04297558;
+    if (std::fabs(cleanPriceWithBaseDate - storedPrice) > tolerance) {
+        BOOST_FAIL("failed to reproduce expected CPI-bond clean price"
+                   << std::fixed << std::setprecision(12) << "\n  expected:   " << storedPrice
+                   << "\n  calculated: " << cleanPriceWithBaseDate);
+    }
+}
+
 test_suite* InflationCPIBondTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("CPI bond tests");
+    auto* suite = BOOST_TEST_SUITE("CPI bond tests");
 
     suite->add(QUANTLIB_TEST_CASE(&InflationCPIBondTest::testCleanPrice));
-
+    suite->add(QUANTLIB_TEST_CASE(&InflationCPIBondTest::testCPILegWithoutBaseCPI));
     return suite;
 }
 

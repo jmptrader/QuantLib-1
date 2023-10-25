@@ -25,7 +25,7 @@
 namespace QuantLib {
 
     UniformGridMesher::UniformGridMesher(
-        const boost::shared_ptr<FdmLinearOpLayout> & layout,
+        const ext::shared_ptr<FdmLinearOpLayout> & layout,
         const std::vector<std::pair<Real, Real> > & boundaries)
     : FdmMesher (layout),
       dx_       (new Real[layout->dim().size()]),
@@ -45,12 +45,10 @@ namespace QuantLib {
         }
     }
 
-    Disposable<Array> UniformGridMesher::locations(Size d) const {
+    Array UniformGridMesher::locations(Size d) const {
         Array retVal(layout_->size());
 
-        const FdmLinearOpIterator endIter = layout_->end();
-        for (FdmLinearOpIterator iter = layout_->begin();
-            iter != endIter; ++iter) {
+        for (const auto& iter : *layout_) {
             retVal[iter.index()] = locations_[d][iter.coordinates()[d]];
         }
 

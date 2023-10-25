@@ -6,6 +6,7 @@
 #include <ql/math/interpolations/backwardflatlinearinterpolation.hpp>
 #include <ql/math/interpolations/bicubicsplineinterpolation.hpp>
 #include <ql/math/interpolations/bilinearinterpolation.hpp>
+#include <ql/math/interpolations/chebyshevinterpolation.hpp>
 #include <ql/math/interpolations/convexmonotoneinterpolation.hpp>
 #include <ql/math/interpolations/cubicinterpolation.hpp>
 #include <ql/math/interpolations/extrapolation.hpp>
@@ -14,6 +15,7 @@
 #include <ql/math/interpolations/interpolation2d.hpp>
 #include <ql/math/interpolations/kernelinterpolation.hpp>
 #include <ql/math/interpolations/kernelinterpolation2d.hpp>
+#include <ql/math/interpolations/lagrangeinterpolation.hpp>
 #include <ql/math/interpolations/linearinterpolation.hpp>
 #include <ql/math/interpolations/loginterpolation.hpp>
 #include <ql/math/interpolations/mixedinterpolation.hpp>

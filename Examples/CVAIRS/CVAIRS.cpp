@@ -17,34 +17,27 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include <ql/quantlib.hpp>
+#include <ql/qldefines.hpp>
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
+#  include <ql/auto_link.hpp>
+#endif
+#include <ql/instruments/vanillaswap.hpp>
+#include <ql/instruments/makevanillaswap.hpp>
+#include <ql/pricingengines/swap/discountingswapengine.hpp>
+#include <ql/pricingengines/swap/cvaswapengine.hpp>
+#include <ql/termstructures/yield/piecewiseyieldcurve.hpp>
+#include <ql/termstructures/yield/ratehelpers.hpp>
+#include <ql/termstructures/credit/interpolatedhazardratecurve.hpp>
+#include <ql/indexes/ibor/euribor.hpp>
+#include <ql/time/calendars/target.hpp>
+#include <ql/time/daycounters/actualactual.hpp>
+#include <ql/time/daycounters/actual360.hpp>
 
-#include <boost/timer.hpp>
 #include <iostream>
 #include <iomanip>
 
 using namespace std;
 using namespace QuantLib;
-
-#ifdef BOOST_MSVC
-#  ifdef QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN
-#    include <ql/auto_link.hpp>
-#    define BOOST_LIB_NAME boost_system
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#    define BOOST_LIB_NAME boost_thread
-#    include <boost/config/auto_link.hpp>
-#    undef BOOST_LIB_NAME
-#  endif
-#endif
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-    Integer sessionId() { return 0; }
-
-}
-#endif
 
 /*
   This example reproduces Table 2 on page 11 of 
@@ -58,7 +51,6 @@ int main(int, char* []) {
 
     try {
 
-        boost::timer timer;
         std::cout << std::endl;
 
         Calendar calendar = TARGET();
@@ -68,17 +60,16 @@ int main(int, char* []) {
 
         Settings::instance().evaluationDate() = todaysDate;
 
-        boost::shared_ptr<IborIndex>  yieldIndx(new Euribor3M());
+        auto yieldIndx = ext::make_shared<Euribor3M>();
         Size tenorsSwapMkt[] = {5, 10, 15, 20, 25, 30};
         
         // rates ignoring counterparty risk:
         Rate ratesSwapmkt[] = {.03249, .04074, .04463, .04675, .04775, .04811};
 
-        vector<boost::shared_ptr<RateHelper> > swapHelpers;
+        vector<ext::shared_ptr<RateHelper>> swapHelpers;
         for(Size i=0; i<sizeof(tenorsSwapMkt)/sizeof(Size); i++)
-            swapHelpers.push_back(boost::make_shared<SwapRateHelper>(
-                Handle<Quote>(boost::shared_ptr<Quote>(
-                                   new SimpleQuote(ratesSwapmkt[i]))),
+            swapHelpers.push_back(ext::make_shared<SwapRateHelper>(
+                Handle<Quote>(ext::make_shared<SimpleQuote>(ratesSwapmkt[i])),
                     tenorsSwapMkt[i] * Years,
                     TARGET(),
                     Quarterly,
@@ -86,17 +77,14 @@ int main(int, char* []) {
                     ActualActual(ActualActual::ISDA),
                     yieldIndx));
 
-        boost::shared_ptr<YieldTermStructure> swapTS(
-            new PiecewiseYieldCurve<Discount,LogLinear>(
-             2, TARGET(), swapHelpers, ActualActual(ActualActual::ISDA), 
-             1.0e-12));
+        auto swapTS = ext::make_shared<PiecewiseYieldCurve<Discount, LogLinear>>(
+             2, TARGET(), swapHelpers, ActualActual(ActualActual::ISDA));
         swapTS->enableExtrapolation();
 
-        boost::shared_ptr<PricingEngine> riskFreeEngine(
-            boost::make_shared<DiscountingSwapEngine>(
-                 Handle<YieldTermStructure>(swapTS)));
+        auto riskFreeEngine =  ext::make_shared<DiscountingSwapEngine>(
+                 Handle<YieldTermStructure>(swapTS));
 
-        std::vector<Handle<DefaultProbabilityTermStructure> >
+        std::vector<Handle<DefaultProbabilityTermStructure>>
             defaultIntensityTS;
         
         Size defaultTenors[] = {0, 12, 36, 60, 84, 120, 180, 240, 300, 
@@ -124,45 +112,29 @@ int main(int, char* []) {
             intesitiesVHigh.push_back(intensitiesHigh[i]);
         }
 
-        defaultIntensityTS.push_back(Handle<DefaultProbabilityTermStructure>(
-            boost::shared_ptr<DefaultProbabilityTermStructure>(
-                 new InterpolatedHazardRateCurve<BackwardFlat>(
-                   defaultTSDates, 
-                   intesitiesVLow,
-                   Actual360(),
-                   TARGET()))));
-        defaultIntensityTS.push_back(Handle<DefaultProbabilityTermStructure>(
-            boost::shared_ptr<DefaultProbabilityTermStructure>(
-                 new InterpolatedHazardRateCurve<BackwardFlat>(
-                   defaultTSDates,
-                   intesitiesVMedium,
-                   Actual360(),
-                   TARGET()))));
-        defaultIntensityTS.push_back(Handle<DefaultProbabilityTermStructure>(
-            boost::shared_ptr<DefaultProbabilityTermStructure>(
-                 new InterpolatedHazardRateCurve<BackwardFlat>(
-                   defaultTSDates, 
-                   intesitiesVHigh,
-                   Actual360(), 
-                   TARGET()))));
+        defaultIntensityTS.emplace_back(
+            ext::make_shared<InterpolatedHazardRateCurve<BackwardFlat>>(defaultTSDates, intesitiesVLow,
+                                                          Actual360(), TARGET()));
+        defaultIntensityTS.emplace_back(
+            ext::make_shared<InterpolatedHazardRateCurve<BackwardFlat>>(defaultTSDates, intesitiesVMedium,
+                                                          Actual360(), TARGET()));
+        defaultIntensityTS.emplace_back(
+            ext::make_shared<InterpolatedHazardRateCurve<BackwardFlat>>(defaultTSDates, intesitiesVHigh,
+                                                          Actual360(), TARGET()));
 
         Volatility blackVol = 0.15;   
-        boost::shared_ptr<PricingEngine> ctptySwapCvaLow = 
-            boost::make_shared<CounterpartyAdjSwapEngine>(
+        auto ctptySwapCvaLow = ext::make_shared<CounterpartyAdjSwapEngine>(
                  Handle<YieldTermStructure>(swapTS), 
                  blackVol,
                  defaultIntensityTS[0], 
-                 ctptyRRLow
-                 );
+                 ctptyRRLow);
 
-        boost::shared_ptr<PricingEngine> ctptySwapCvaMedium = 
-            boost::make_shared<CounterpartyAdjSwapEngine>(
+        auto ctptySwapCvaMedium = ext::make_shared<CounterpartyAdjSwapEngine>(
                  Handle<YieldTermStructure>(swapTS), 
                  blackVol, 
                  defaultIntensityTS[1],
                  ctptyRRMedium);
-        boost::shared_ptr<PricingEngine> ctptySwapCvaHigh = 
-            boost::make_shared<CounterpartyAdjSwapEngine>(
+        auto ctptySwapCvaHigh = ext::make_shared<CounterpartyAdjSwapEngine>(
                  Handle<YieldTermStructure>(swapTS), 
                  blackVol,
                  defaultIntensityTS[2],
@@ -181,11 +153,8 @@ int main(int, char* []) {
         DayCounter fixedLegDayCounter = ActualActual(ActualActual::ISDA);
         DayCounter floatingLegDayCounter = ActualActual(ActualActual::ISDA);
 
-        VanillaSwap::Type swapType = 
-            //VanillaSwap::Receiver ;
-            VanillaSwap::Payer;
-        boost::shared_ptr<IborIndex> yieldIndxS(
-             new Euribor3M(Handle<YieldTermStructure>(swapTS)));
+        Swap::Type swapType = Swap::Payer;
+        auto yieldIndxS = ext::make_shared<Euribor3M>(Handle<YieldTermStructure>(swapTS));
         std::vector<VanillaSwap> riskySwaps;
         for(Size i=0; i<sizeof(tenorsSwapMkt)/sizeof(Size); i++) 
             riskySwaps.push_back(MakeVanillaSwap(tenorsSwapMkt[i]*Years,
@@ -239,19 +208,6 @@ int main(int, char* []) {
         }
 
         cout << endl;
-
-        Real seconds  = timer.elapsed();
-        Integer hours = Integer(seconds/3600);
-        seconds -= hours * 3600;
-        Integer minutes = Integer(seconds/60);
-        seconds -= minutes * 60;
-        cout << "Run completed in ";
-        if (hours > 0)
-            cout << hours << " h ";
-        if (hours > 0 || minutes > 0)
-            cout << minutes << " m ";
-        cout << fixed << setprecision(0)
-             << seconds << " s" << endl;
 
         return 0;
     } catch (exception& e) {

@@ -33,9 +33,21 @@ namespace QuantLib {
     /*! formula here ...
         Used to calculate the cumulative normal distribution function
     */
-    class ErrorFunction : public std::unary_function<Real,Real> {
+    class ErrorFunction {
       public:
-        ErrorFunction() {}
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real argument_type;
+
+        /*! \deprecated Use `auto` or `decltype` instead.
+                        Deprecated in version 1.29.
+        */
+        QL_DEPRECATED
+        typedef Real result_type;
+
+        ErrorFunction() = default;
         // function
         Real operator()(Real x) const;
       private:

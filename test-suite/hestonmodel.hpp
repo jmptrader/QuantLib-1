@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2005, 2007, 2010, 2012, 2014 Klaus Spanderen
+ Copyright (C) 2022 Ignacio Anguita
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -21,6 +22,7 @@
 #define quantlib_test_heston_model_hpp
 
 #include <boost/test/unit_test.hpp>
+#include "speedlevel.hpp"
 
 /* remember to document new and/or updated tests in the Doxygen
    comment block of the corresponding class */
@@ -35,6 +37,8 @@ class HestonModelTest {
     static void testMcVsCached();
     static void testFdBarrierVsCached();    
     static void testFdVanillaVsCached();    
+    static void testFdVanillaWithDividendsVsCached();    
+    static void testFdAmerican();    
     static void testDifferentIntegrals();
     static void testMultipleStrikesEngine();
     static void testAnalyticPiecewiseTimeDependent();
@@ -43,7 +47,27 @@ class HestonModelTest {
     static void testAnalyticPDFHestonEngine();
     static void testExpansionOnAlanLewisReference();
     static void testExpansionOnFordeReference();
-    static boost::unit_test_framework::test_suite* suite();
+    static void testAllIntegrationMethods();
+    static void testCosHestonCumulants();
+    static void testCosHestonEngine();
+    static void testCosHestonEngineTruncation();
+    static void testCharacteristicFct();
+    static void testAndersenPiterbargPricing();
+    static void testAndersenPiterbargControlVariateIntegrand();
+    static void testAndersenPiterbargConvergence();
+    static void testPiecewiseTimeDependentChFvsHestonChF();
+    static void testPiecewiseTimeDependentComparison();
+    static void testPiecewiseTimeDependentChFAsymtotic();
+    static void testSmallSigmaExpansion();
+    static void testSmallSigmaExpansion4ExpFitting();
+    static void testExponentialFitting4StrikesAndMaturities();
+    static void testHestonEngineIntegration();
+    static void testOptimalControlVariateChoice();
+    static void testAsymptoticControlVariate();
+    static void testLocalVolFromHestonModel();
+    
+
+    static boost::unit_test_framework::test_suite* suite(SpeedLevel);
     static boost::unit_test_framework::test_suite* experimental();
 };
 

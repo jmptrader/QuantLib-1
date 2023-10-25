@@ -4,7 +4,7 @@
  Copyright (C) 2007 Ferdinando Ametrano
  Copyright (C) 2007 Marco Bianchetti
  Copyright (C) 2007 Giorgio Facchinetti
- Copyright (C) 2007 François du Vignaud
+ Copyright (C) 2007 FranÃ§ois du Vignaud
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -28,7 +28,6 @@
 #define quantlib_exp_correlations_hpp
 
 #include <ql/math/matrix.hpp>
-#include <ql/utilities/disposable.hpp>
 #include <ql/models/marketmodels/piecewiseconstantcorrelation.hpp>
 
 namespace QuantLib {
@@ -39,27 +38,26 @@ namespace QuantLib {
         gamma = exponent for time to go
         t = time dependence
     */
-    Disposable<Matrix> exponentialCorrelations(
-                                    const std::vector<Time>& rateTimes,
-                                    Real longTermCorr = 0.5,
-                                    Real beta = 0.2,
-                                    Real gamma = 1.0,
-                                    Time t = 0.0);
+    Matrix exponentialCorrelations(const std::vector<Time>& rateTimes,
+                                   Real longTermCorr = 0.5,
+                                   Real beta = 0.2,
+                                   Real gamma = 1.0,
+                                   Time t = 0.0);
 
     class ExponentialForwardCorrelation :
         public PiecewiseConstantCorrelation {
       public:
-        ExponentialForwardCorrelation(
-                        const std::vector<Time>& rateTimes,
-                        Real longTermCorr = 0.5,
-                        Real beta = 0.2,
-                        Real gamma = 1.0,
-                        const std::vector<Time>& times = std::vector<Time>());
-        const std::vector<Time>& times() const;
-        const std::vector<Time>& rateTimes() const;
-        const std::vector<Matrix>& correlations() const;
-        Size numberOfRates() const;
-    private:
+        ExponentialForwardCorrelation(const std::vector<Time>& rateTimes,
+                                      Real longTermCorr = 0.5,
+                                      Real beta = 0.2,
+                                      Real gamma = 1.0,
+                                      std::vector<Time> times = std::vector<Time>());
+        const std::vector<Time>& times() const override;
+        const std::vector<Time>& rateTimes() const override;
+        const std::vector<Matrix>& correlations() const override;
+        Size numberOfRates() const override;
+
+      private:
         Size numberOfRates_;
         Real longTermCorr_, beta_, gamma_;
         std::vector<Time> rateTimes_, times_;

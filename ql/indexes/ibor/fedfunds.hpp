@@ -32,8 +32,7 @@ namespace QuantLib {
     /*! (for balances held at the Federal Reserve) */
     class FedFunds : public OvernightIndex {
       public:
-        FedFunds(const Handle<YieldTermStructure>& h =
-                                                Handle<YieldTermStructure>());
+        explicit FedFunds(const Handle<YieldTermStructure>& h = {});
     };
 
 }

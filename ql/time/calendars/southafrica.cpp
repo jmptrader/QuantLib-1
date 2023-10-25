@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
+ Copyright (C) 2023 Skandinaviska Enskilda Banken AB (publ)
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -23,7 +24,7 @@ namespace QuantLib {
 
     SouthAfrica::SouthAfrica() {
         // all calendar instances share the same implementation instance
-        static boost::shared_ptr<Calendar::Impl> impl(new SouthAfrica::Impl);
+        static ext::shared_ptr<Calendar::Impl> impl(new SouthAfrica::Impl);
         impl_ = impl;
     }
 
@@ -73,8 +74,12 @@ namespace QuantLib {
             || (d == 22 && m == April && y == 2009)
             // one-shot: Election day 2016
             || (d == 3 && m == August && y == 2016)
+            // one-shot: Election day 2021
+            || (d == 1 && m == November && y == 2021)
+            // one-shot: In lieu of Christmas falling on Sunday in 2022
+            || (d == 27 && m == December && y == 2022)
             )
-            return false;
+            return false; // NOLINT(readability-simplify-boolean-expr)
         return true;
     }
 

@@ -2,7 +2,7 @@
 
 /*
  Copyright (C) 2006, 2008 Ferdinando Ametrano
- Copyright (C) 2006 François du Vignaud
+ Copyright (C) 2006 FranÃ§ois du Vignaud
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -35,20 +35,20 @@ namespace QuantLib {
     class EurodollarFuturesImpliedStdDevQuote : public Quote,
                                                 public LazyObject {
       public:
-        EurodollarFuturesImpliedStdDevQuote(const Handle<Quote>& forward,
-                                            const Handle<Quote>& callPrice,
-                                            const Handle<Quote>& putPrice,
+        EurodollarFuturesImpliedStdDevQuote(Handle<Quote> forward,
+                                            Handle<Quote> callPrice,
+                                            Handle<Quote> putPrice,
                                             Real strike,
                                             Real guess = .15,
                                             Real accuracy = 1.0e-6,
                                             Natural maxIter = 100);
         //! \name Quote interface
         //@{
-        Real value() const;
-        bool isValid() const;
+        Real value() const override;
+        bool isValid() const override;
         //@}
       protected:
-        void performCalculations() const;
+        void performCalculations() const override;
         mutable Real impliedStdev_;
         Real strike_;
         Real accuracy_;

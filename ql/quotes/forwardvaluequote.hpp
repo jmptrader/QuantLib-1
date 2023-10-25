@@ -2,7 +2,7 @@
 
 /*
  Copyright (C) 2006, 2007 Ferdinando Ametrano
- Copyright (C) 2006 François du Vignaud
+ Copyright (C) 2006 FranÃ§ois du Vignaud
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -34,16 +34,16 @@ namespace QuantLib {
     class ForwardValueQuote : public Quote,
                               public Observer {
       public:
-        ForwardValueQuote(const boost::shared_ptr<Index>& index,
-                          const Date& fixingDate);
+        ForwardValueQuote(ext::shared_ptr<Index> index, const Date& fixingDate);
         //! \name Quote interface
         //@{
-        Real value() const;
-        bool isValid() const;
+        Real value() const override;
+        bool isValid() const override;
         //@}
-        void update();
+        void update() override;
+
       private:
-        boost::shared_ptr<Index> index_;
+        ext::shared_ptr<Index> index_;
         Date fixingDate_;
     };
 

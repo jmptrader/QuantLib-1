@@ -2,7 +2,7 @@
 
 /*
  Copyright (C) 2007, 2011 Ferdinando Ametrano
- Copyright (C) 2007 François du Vignaud
+ Copyright (C) 2007 FranÃ§ois du Vignaud
  Copyright (C) 2004, 2005, 2007, 2009 StatPro Italia srl
 
  This file is part of QuantLib, a free-software/open-source library
@@ -29,7 +29,7 @@
 #include <ql/patterns/singleton.hpp>
 #include <ql/time/date.hpp>
 #include <ql/utilities/observablevalue.hpp>
-#include <boost/optional.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -102,28 +102,29 @@ namespace QuantLib {
             behavior chosen for includeReferenceDate. It cannot be overridden
             locally when calling the CashFlow::hasOccurred method.
         */
-        boost::optional<bool>& includeTodaysCashFlows();
-        boost::optional<bool> includeTodaysCashFlows() const;
+        ext::optional<bool>& includeTodaysCashFlows();
+        ext::optional<bool> includeTodaysCashFlows() const;
 
         bool& enforcesTodaysHistoricFixings();
         bool enforcesTodaysHistoricFixings() const;
+
       private:
         DateProxy evaluationDate_;
-        bool includeReferenceDateEvents_;
-        boost::optional<bool> includeTodaysCashFlows_;
-        bool enforcesTodaysHistoricFixings_;
+        bool includeReferenceDateEvents_ = false;
+        ext::optional<bool> includeTodaysCashFlows_;
+        bool enforcesTodaysHistoricFixings_ = false;
     };
 
 
     // helper class to temporarily and safely change the settings
-    class SavedSettings {
+    class SavedSettings { // NOLINT(cppcoreguidelines-special-member-functions)
       public:
         SavedSettings();
         ~SavedSettings();
       private:
         Date evaluationDate_;
         bool includeReferenceDateEvents_;
-        boost::optional<bool> includeTodaysCashFlows_;
+        ext::optional<bool> includeTodaysCashFlows_;
         bool enforcesTodaysHistoricFixings_;
     };
 
@@ -138,7 +139,8 @@ namespace QuantLib {
     }
 
     inline Settings::DateProxy& Settings::DateProxy::operator=(const Date& d) {
-        ObservableValue<Date>::operator=(d);
+        if (value() != d) // avoid notifications if the date doesn't actually change
+            ObservableValue<Date>::operator=(d);
         return *this;
     }
 
@@ -158,11 +160,11 @@ namespace QuantLib {
         return includeReferenceDateEvents_;
     }
 
-    inline boost::optional<bool>& Settings::includeTodaysCashFlows() {
+    inline ext::optional<bool>& Settings::includeTodaysCashFlows() {
         return includeTodaysCashFlows_;
     }
 
-    inline boost::optional<bool> Settings::includeTodaysCashFlows() const {
+    inline ext::optional<bool> Settings::includeTodaysCashFlows() const {
         return includeTodaysCashFlows_;
     }
 

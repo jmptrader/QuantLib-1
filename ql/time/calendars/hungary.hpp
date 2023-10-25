@@ -33,6 +33,7 @@ namespace QuantLib {
         <ul>
         <li>Saturdays</li>
         <li>Sundays</li>
+        <li>Good Friday (since 2017)</li>
         <li>Easter Monday</li>
         <li>Whit(Pentecost) Monday </li>
         <li>New Year's Day, January 1st</li>
@@ -49,10 +50,10 @@ namespace QuantLib {
     */
     class Hungary : public Calendar {
       private:
-        class Impl : public Calendar::WesternImpl {
+        class Impl final : public Calendar::WesternImpl {
           public:
-            std::string name() const { return "Hungary"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "Hungary"; }
+            bool isBusinessDay(const Date&) const override;
         };
       public:
         Hungary();

@@ -1,7 +1,7 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
 /*
- Copyright (C) 2011 Master IMAFA - Polytech'Nice Sophia - Université de Nice Sophia Antipolis
+ Copyright (C) 2011 Master IMAFA - Polytech'Nice Sophia - UniversitÃ© de Nice Sophia Antipolis
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -32,14 +32,14 @@ namespace QuantLib {
     //! Kirk approximation for European spread option on futures
     class KirkSpreadOptionEngine : public SpreadOption::engine {
       public:
-        KirkSpreadOptionEngine(
-            const boost::shared_ptr<BlackProcess>& process1,
-            const boost::shared_ptr<BlackProcess>& process2,
-            const Handle<Quote>& correlation);
-        void calculate() const;
+        KirkSpreadOptionEngine(ext::shared_ptr<BlackProcess> process1,
+                               ext::shared_ptr<BlackProcess> process2,
+                               Handle<Quote> correlation);
+        void calculate() const override;
+
       private:
-        boost::shared_ptr<BlackProcess> process1_;
-        boost::shared_ptr<BlackProcess> process2_;
+        ext::shared_ptr<BlackProcess> process1_;
+        ext::shared_ptr<BlackProcess> process2_;
         Handle<Quote> rho_;
     };
 

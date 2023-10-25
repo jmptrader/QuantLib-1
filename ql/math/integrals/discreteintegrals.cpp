@@ -18,20 +18,13 @@
 */
 
 #include <ql/math/integrals/discreteintegrals.hpp>
-
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++11-extensions"
-#endif
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 using namespace boost::accumulators;
 
 namespace QuantLib {
+
     Real DiscreteTrapezoidIntegral::operator()(
         const Array& x, const Array& f)    const {
 
@@ -67,10 +60,31 @@ namespace QuantLib {
 
             acc(k*alpha*f[j]+k*beta*f[j+1]+k*gamma*f[j+2]);
         }
-        if (!(n & 1)) {
+        if ((n & 1) == 0U) {
             acc(0.5*(x[n-1]-x[n-2])*(f[n-1]+f[n-2]));
         }
 
         return sum(acc);
+    }
+
+
+    Real DiscreteTrapezoidIntegrator::integrate(
+        const ext::function<Real (Real)>& f, Real a, Real b) const {
+            const Array x(maxEvaluations(), a, (b-a)/(maxEvaluations()-1));
+            Array fv(x.size());
+            std::transform(x.begin(), x.end(), fv.begin(), f);
+
+            increaseNumberOfEvaluations(maxEvaluations());
+            return DiscreteTrapezoidIntegral()(x, fv);
+    }
+
+    Real DiscreteSimpsonIntegrator::integrate(
+        const ext::function<Real (Real)>& f, Real a, Real b) const {
+            const Array x(maxEvaluations(), a, (b-a)/(maxEvaluations()-1));
+            Array fv(x.size());
+            std::transform(x.begin(), x.end(), fv.begin(), f);
+
+            increaseNumberOfEvaluations(maxEvaluations());
+            return DiscreteSimpsonIntegral()(x, fv);
     }
 }

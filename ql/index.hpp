@@ -27,9 +27,9 @@
 #ifndef quantlib_index_hpp
 #define quantlib_index_hpp
 
-#include <ql/time/calendar.hpp>
-#include <ql/math/comparison.hpp>
 #include <ql/indexes/indexmanager.hpp>
+#include <ql/math/comparison.hpp>
+#include <ql/time/calendar.hpp>
 
 namespace QuantLib {
 
@@ -43,7 +43,7 @@ namespace QuantLib {
     */
     class Index : public Observable {
       public:
-        virtual ~Index() {}
+        ~Index() override = default;
         //! Returns the name of the index.
         /*! \warning This method is used for output and comparison
                      between indexes. It is <b>not</b> meant to be
@@ -54,12 +54,13 @@ namespace QuantLib {
         virtual Calendar fixingCalendar() const = 0;
         //! returns TRUE if the fixing date is a valid one
         virtual bool isValidFixingDate(const Date& fixingDate) const = 0;
+        //! returns whether a historical fixing was stored for the given date
+        bool hasHistoricalFixing(const Date& fixingDate) const;
         //! returns the fixing at the given date
         /*! the date passed as arguments must be the actual calendar
             date of the fixing; no settlement days must be used.
         */
-        virtual Real fixing(const Date& fixingDate,
-                            bool forecastTodaysFixing = false) const = 0;
+        virtual Real fixing(const Date& fixingDate, bool forecastTodaysFixing = false) const = 0;
         //! returns the fixing TimeSeries
         const TimeSeries<Real>& timeSeries() const {
             return IndexManager::instance().getHistory(name());
@@ -73,40 +74,37 @@ namespace QuantLib {
         /*! the date passed as arguments must be the actual calendar
             date of the fixing; no settlement days must be used.
         */
-        virtual void addFixing(const Date& fixingDate,
-                               Real fixing,
-                               bool forceOverwrite = false);
+        virtual void addFixing(const Date& fixingDate, Real fixing, bool forceOverwrite = false);
         //! stores historical fixings from a TimeSeries
         /*! the dates in the TimeSeries must be the actual calendar
             dates of the fixings; no settlement days must be used.
         */
-        void addFixings(const TimeSeries<Real>& t,
-                        bool forceOverwrite = false);
+        void addFixings(const TimeSeries<Real>& t, bool forceOverwrite = false);
         //! stores historical fixings at the given dates
         /*! the dates passed as arguments must be the actual calendar
             dates of the fixings; no settlement days must be used.
         */
         template <class DateIterator, class ValueIterator>
-        void addFixings(DateIterator dBegin, DateIterator dEnd,
+        void addFixings(DateIterator dBegin,
+                        DateIterator dEnd,
                         ValueIterator vBegin,
                         bool forceOverwrite = false) {
             checkNativeFixingsAllowed();
             std::string tag = name();
             TimeSeries<Real> h = IndexManager::instance().getHistory(tag);
-            bool missingFixing, validFixing;
             bool noInvalidFixing = true, noDuplicatedFixing = true;
             Date invalidDate, duplicatedDate;
             Real nullValue = Null<Real>();
             Real invalidValue = Null<Real>();
             Real duplicatedValue = Null<Real>();
             while (dBegin != dEnd) {
-                validFixing = isValidFixingDate(*dBegin);
+                bool validFixing = isValidFixingDate(*dBegin);
                 Real currentValue = h[*dBegin];
-                missingFixing = forceOverwrite || currentValue == nullValue;
+                bool missingFixing = forceOverwrite || currentValue == nullValue;
                 if (validFixing) {
                     if (missingFixing)
                         h[*(dBegin++)] = *(vBegin++);
-                    else if (close(currentValue,*(vBegin))) {
+                    else if (close(currentValue, *(vBegin))) {
                         ++dBegin;
                         ++vBegin;
                     } else {
@@ -121,22 +119,25 @@ namespace QuantLib {
                 }
             }
             IndexManager::instance().setHistory(tag, h);
-            QL_REQUIRE(noInvalidFixing,
-                       "At least one invalid fixing provided: " <<
-                       invalidDate.weekday() << " " << invalidDate <<
-                       ", " << invalidValue);
-            QL_REQUIRE(noDuplicatedFixing,
-                       "At least one duplicated fixing provided: " <<
-                       duplicatedDate << ", " << duplicatedValue <<
-                       " while " << h[duplicatedDate] <<
-                       " value is already present");
+            QL_REQUIRE(noInvalidFixing, "At least one invalid fixing provided: "
+                                            << invalidDate.weekday() << " " << invalidDate << ", "
+                                            << invalidValue);
+            QL_REQUIRE(noDuplicatedFixing, "At least one duplicated fixing provided: "
+                                               << duplicatedDate << ", " << duplicatedValue
+                                               << " while " << h[duplicatedDate]
+                                               << " value is already present");
         }
         //! clears all stored historical fixings
         void clearFixings();
+
       private:
         //! check if index allows for native fixings
         void checkNativeFixingsAllowed();
     };
+
+    inline bool Index::hasHistoricalFixing(const Date& fixingDate) const {
+        return IndexManager::instance().hasHistoricalFixing(name(), fixingDate);
+    }
 
 }
 

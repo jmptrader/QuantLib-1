@@ -27,6 +27,7 @@
 
 #include <ql/instruments/oneassetoption.hpp>
 #include <ql/instruments/payoffs.hpp>
+#include <ql/instruments/dividendschedule.hpp>
 
 namespace QuantLib {
 
@@ -36,8 +37,8 @@ namespace QuantLib {
     /*! \ingroup instruments */
     class VanillaOption : public OneAssetOption {
       public:
-        VanillaOption(const boost::shared_ptr<StrikedTypePayoff>&,
-                      const boost::shared_ptr<Exercise>&);
+        VanillaOption(const ext::shared_ptr<StrikedTypePayoff>&,
+                      const ext::shared_ptr<Exercise>&);
 
         /*! \warning currently, this method returns the Black-Scholes
                      implied volatility using analytic formulas for
@@ -57,13 +58,26 @@ namespace QuantLib {
                      value lower than the intrinsic value in the case
                      of American options.
         */
+        //@{
         Volatility impliedVolatility(
              Real price,
-             const boost::shared_ptr<GeneralizedBlackScholesProcess>& process,
+             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
              Real accuracy = 1.0e-4,
              Size maxEvaluations = 100,
              Volatility minVol = 1.0e-7,
              Volatility maxVol = 4.0) const;
+
+        Volatility impliedVolatility(
+             Real price,
+             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
+             const DividendSchedule& dividends,
+             Real accuracy = 1.0e-4,
+             Size maxEvaluations = 100,
+             Volatility minVol = 1.0e-7,
+             Volatility maxVol = 4.0) const;
+        //@}
+
+        void setupArguments(PricingEngine::arguments*) const override;
     };
 
 }

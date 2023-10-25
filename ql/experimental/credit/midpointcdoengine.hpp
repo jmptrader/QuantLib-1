@@ -18,11 +18,15 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-
 #ifndef quantlib_midpoint_cdo_engine_hpp
 #define quantlib_midpoint_cdo_engine_hpp
 
+#include <ql/qldefines.hpp>
+
+#ifndef QL_PATCH_SOLARIS
+
 #include <ql/experimental/credit/syntheticcdo.hpp>
+#    include <utility>
 
 namespace QuantLib {
 
@@ -41,14 +45,16 @@ namespace QuantLib {
     */
     class MidPointCDOEngine : public SyntheticCDO::engine {
     public:
-        MidPointCDOEngine(
-            const Handle<YieldTermStructure>& discountCurve)
-        : discountCurve_(discountCurve) {}
-        void calculate() const;
+      explicit MidPointCDOEngine(Handle<YieldTermStructure> discountCurve)
+      : discountCurve_(std::move(discountCurve)) {}
+      void calculate() const override;
+
     protected:
-        Handle<YieldTermStructure> discountCurve_;
+      Handle<YieldTermStructure> discountCurve_;
     };
 
 }
+
+#endif
 
 #endif

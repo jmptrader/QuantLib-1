@@ -1,7 +1,7 @@
 /* -*- mode: c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
 /*
- Copyright (C) 2009 Frédéric Degraeve
+ Copyright (C) 2009 FrÃ©dÃ©ric Degraeve
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -38,15 +38,13 @@ namespace QuantLib {
     */
     class BFGS: public LineSearchBasedMethod {
       public:
-        BFGS(const boost::shared_ptr<LineSearch>& lineSearch =
-                                              boost::shared_ptr<LineSearch>())
+        BFGS(const ext::shared_ptr<LineSearch>& lineSearch =
+                                              ext::shared_ptr<LineSearch>())
         : LineSearchBasedMethod(lineSearch) {}
       private:
         //! \name LineSearchBasedMethod interface
         //@{
-        Disposable<Array> getUpdatedDirection(const Problem &P,
-                                              Real gold2,
-                                              const Array& oldGradient);
+        Array getUpdatedDirection(const Problem& P, Real gold2, const Array& oldGradient) override;
         //@}
         //! inverse of hessian matrix
         Matrix inverseHessian_;

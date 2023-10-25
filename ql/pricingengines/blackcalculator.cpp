@@ -22,8 +22,6 @@
 #include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/math/comparison.hpp>
 
-using boost::shared_ptr;
-
 namespace QuantLib {
 
     class BlackCalculator::Calculator : public AcyclicVisitor,
@@ -35,16 +33,16 @@ namespace QuantLib {
       private:
         BlackCalculator& black_;
       public:
-        Calculator(BlackCalculator& black) : black_(black) {}
-        void visit(Payoff&);
-        void visit(PlainVanillaPayoff&);
-        void visit(CashOrNothingPayoff&);
-        void visit(AssetOrNothingPayoff&);
-        void visit(GapPayoff&);
+        explicit Calculator(BlackCalculator& black) : black_(black) {}
+        void visit(Payoff&) override;
+        void visit(PlainVanillaPayoff&) override;
+        void visit(CashOrNothingPayoff&) override;
+        void visit(AssetOrNothingPayoff&) override;
+        void visit(GapPayoff&) override;
     };
 
 
-    BlackCalculator::BlackCalculator(const shared_ptr<StrikedTypePayoff>& p,
+    BlackCalculator::BlackCalculator(const ext::shared_ptr<StrikedTypePayoff>& p,
                                      Real forward,
                                      Real stdDev,
                                      Real discount)
@@ -60,11 +58,11 @@ namespace QuantLib {
                                      Real discount)
     : strike_(strike), forward_(forward), stdDev_(stdDev),
       discount_(discount), variance_(stdDev*stdDev) {
-        initialize(shared_ptr<StrikedTypePayoff>(new
+        initialize(ext::shared_ptr<StrikedTypePayoff>(new
             PlainVanillaPayoff(optionType, strike)));
     }
 
-    void BlackCalculator::initialize(const shared_ptr<StrikedTypePayoff>& p) {
+    void BlackCalculator::initialize(const ext::shared_ptr<StrikedTypePayoff>& p) {
         QL_REQUIRE(strike_>=0.0,
                    "strike (" << strike_ << ") must be non-negative");
         QL_REQUIRE(forward_>0.0,
@@ -352,4 +350,20 @@ namespace QuantLib {
         return discount_ * temp2;
     }
 
+
+    Real BlackCalculator::strikeGamma() const {
+
+        Real temp = stdDev_*strike_;
+        Real DalphaDstrike = -DalphaDd1_/temp;
+        Real DbetaDstrike  = -DbetaDd2_/temp;
+
+        Real D2alphaD2strike = -DalphaDstrike/strike_*(1-d1_/stdDev_);
+        Real D2betaD2strike  = -DbetaDstrike /strike_*(1-d2_/stdDev_);
+
+        Real temp2 =
+                D2alphaD2strike * forward_ + D2betaD2strike * x_
+                + 2.0*DbetaDstrike *DxDstrike_;
+
+        return discount_ * temp2;
+    }
 }

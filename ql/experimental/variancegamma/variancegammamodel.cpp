@@ -23,7 +23,7 @@ FOR A PARTICULAR PURPOSE.  See the license for more details.
 namespace QuantLib {
 
     VarianceGammaModel::VarianceGammaModel(
-        const boost::shared_ptr<VarianceGammaProcess> & process)
+        const ext::shared_ptr<VarianceGammaProcess> & process)
         : CalibratedModel(3), process_(process) {
             arguments_[0] = ConstantParameter(process->sigma(),
                 PositiveConstraint());
@@ -32,7 +32,7 @@ namespace QuantLib {
             arguments_[2] = ConstantParameter(process->theta(),
                 NoConstraint());
 
-            generateArguments();
+            VarianceGammaModel::generateArguments();
 
             registerWith(process_->riskFreeRate());
             registerWith(process_->dividendYield());

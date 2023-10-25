@@ -34,6 +34,8 @@ namespace QuantLib {
             return out << "Zero";
           case DateGeneration::ThirdWednesday:
             return out << "ThirdWednesday";
+          case DateGeneration::ThirdWednesdayInclusive:
+            return out << "ThirdWednesdayInclusive";
           case DateGeneration::Twentieth:
             return out << "Twentieth";
           case DateGeneration::TwentiethIMM:
@@ -42,6 +44,8 @@ namespace QuantLib {
             return out << "OldCDS";
           case DateGeneration::CDS:
             return out << "CDS";
+          case DateGeneration::CDS2015:
+            return out << "CDS2015";
           default:
             QL_FAIL("unknown DateGeneration::Rule (" << Integer(r) << ")");
         }

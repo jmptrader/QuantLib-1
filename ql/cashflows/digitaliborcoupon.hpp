@@ -36,7 +36,7 @@ namespace QuantLib {
     class DigitalIborCoupon : public DigitalCoupon {
       public:
         DigitalIborCoupon(
-            const boost::shared_ptr<IborCoupon> &underlying,
+            const ext::shared_ptr<IborCoupon> &underlying,
             Rate callStrike = Null<Rate>(),
             Position::Type callPosition = Position::Long,
             bool isCallATMIncluded = false,
@@ -45,12 +45,12 @@ namespace QuantLib {
             Position::Type putPosition = Position::Long,
             bool isPutATMIncluded = false,
             Rate putDigitalPayoff = Null<Rate>(),
-            const boost::shared_ptr<DigitalReplication> &replication =
-                boost::shared_ptr<DigitalReplication>(new DigitalReplication));
+            const ext::shared_ptr<DigitalReplication>& replication = {},
+            bool nakedOption =false);
 
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor&);
+        void accept(AcyclicVisitor&) override;
         //@}
     };
 
@@ -58,8 +58,7 @@ namespace QuantLib {
     //! helper class building a sequence of digital ibor-rate coupons
     class DigitalIborLeg {
       public:
-        DigitalIborLeg(const Schedule& schedule,
-                       const boost::shared_ptr<IborIndex>& index);
+        DigitalIborLeg(Schedule schedule, ext::shared_ptr<IborIndex> index);
         DigitalIborLeg& withNotionals(Real notional);
         DigitalIborLeg& withNotionals(const std::vector<Real>& notionals);
         DigitalIborLeg& withPaymentDayCounter(const DayCounter&);
@@ -83,27 +82,33 @@ namespace QuantLib {
         DigitalIborLeg& withPutATM(bool flag = true);
         DigitalIborLeg& withPutPayoffs(Rate payoff);
         DigitalIborLeg& withPutPayoffs(const std::vector<Rate>& payoffs);
-        DigitalIborLeg &withReplication(
-            const boost::shared_ptr<DigitalReplication> &replication =
-                boost::shared_ptr<DigitalReplication>(new DigitalReplication));
+        DigitalIborLeg& withReplication(const ext::shared_ptr<DigitalReplication>&);
+        /*! \deprecated Use the overload that passes a replication instead.
+                        Deprecated in version 1.32.
+        */
+        [[deprecated("Use the overload that passes a replication instead")]]
+        DigitalIborLeg& withReplication();
+        DigitalIborLeg& withNakedOption(bool nakedOption = true);
+
         operator Leg() const;
       private:
         Schedule schedule_;
-        boost::shared_ptr<IborIndex> index_;
+        ext::shared_ptr<IborIndex> index_;
         std::vector<Real> notionals_;
         DayCounter paymentDayCounter_;
-        BusinessDayConvention paymentAdjustment_;
+        BusinessDayConvention paymentAdjustment_ = Following;
         std::vector<Natural> fixingDays_;
         std::vector<Real> gearings_;
         std::vector<Spread> spreads_;
-        bool inArrears_;
+        bool inArrears_ = false;
         std::vector<Rate> callStrikes_, callPayoffs_;
-        Position::Type longCallOption_;
-        bool callATM_;
+        Position::Type longCallOption_ = Position::Long;
+        bool callATM_ = false;
         std::vector<Rate> putStrikes_, putPayoffs_;
-        Position::Type longPutOption_;
-        bool putATM_;
-        boost::shared_ptr<DigitalReplication> replication_;
+        Position::Type longPutOption_ = Position::Long;
+        bool putATM_ = false;
+        ext::shared_ptr<DigitalReplication> replication_;
+        bool nakedOption_;
     };
 
 }

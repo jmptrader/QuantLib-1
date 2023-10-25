@@ -30,13 +30,13 @@
 
 namespace QuantLib {
 
-    //! This class contains a sampled curve.
-    /*! Initially the class will contain one indexed curve */
-    class SampledCurve {
+    /*! \deprecated Use the new finite-differences framework instead.
+                    Deprecated in version 1.32.
+    */
+    class [[deprecated("Use the new finite-differences framework instead")]] SampledCurve {
       public:
         SampledCurve(Size gridSize = 0);
         SampledCurve(const Array &grid);
-        SampledCurve& operator=(const SampledCurve&);
 
         //! \name inspectors
         //@{
@@ -60,7 +60,7 @@ namespace QuantLib {
         void sample(const F& f) {
             Array::iterator i, j;
             for(i=grid_.begin(), j = values_.begin();
-                i != grid_.end(); i++, j++)
+                i != grid_.end(); ++i, ++j)
                 *j = f(*i);
         }
         //@}
@@ -83,13 +83,15 @@ namespace QuantLib {
 
         //! \name utilities
         //@{
-        void swap(SampledCurve&);
+        QL_DEPRECATED_DISABLE_WARNING
+        void swap(SampledCurve&) noexcept;
+        QL_DEPRECATED_ENABLE_WARNING
         void setLogGrid(Real min, Real max) {
             setGrid(BoundedLogGrid(min, max, size()-1));
         }
         void regridLogGrid(Real min, Real max) {
-            regrid(BoundedLogGrid(min, max, size()-1),
-                   std::ptr_fun<Real,Real>(std::log));
+            regrid(BoundedLogGrid(min, max, size() - 1),
+                   [](Real x) -> Real { return std::log(x); });
         }
         void shiftGrid(Real s) {
             grid_ += s;
@@ -99,6 +101,12 @@ namespace QuantLib {
         }
 
         void regrid(const Array &new_grid);
+
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnoexcept-type"
+#endif
+
         template <class T>
         void regrid(const Array &new_grid,
                     T func) {
@@ -117,14 +125,18 @@ namespace QuantLib {
             Array newValues = new_grid;
             std::transform(newValues.begin(), newValues.end(),
                            newValues.begin(), func);
-            for (Array::iterator j = newValues.begin();
-                 j != newValues.end(); j++) {
-                *j = priceSpline(*j, true);
+            for (Real& newValue : newValues) {
+                newValue = priceSpline(newValue, true);
             }
             values_.swap(newValues);
             grid_ = new_grid;
         }
 
+#if defined(__GNUC__) && (__GNUC__ >= 7)
+#pragma GCC diagnostic pop
+#endif
+
+        QL_DEPRECATED_DISABLE_WARNING
         template <class T>
         inline const SampledCurve& transform(T x) {
             std::transform(values_.begin(), values_.end(),
@@ -138,31 +150,36 @@ namespace QuantLib {
                            grid_.begin(), x);
             return *this;
         }
+        QL_DEPRECATED_ENABLE_WARNING
         //@}
       private:
         Array grid_;
         Array values_;
     };
 
-    /* \relates SampledCurve */
-    void swap(SampledCurve&, SampledCurve&);
+    QL_DEPRECATED_DISABLE_WARNING
 
+    /* \relates SampledCurve */
+    void swap(SampledCurve&, SampledCurve&) noexcept;
+
+    /*! \deprecated Use the new finite-differences framework instead.
+                    Deprecated in version 1.32.
+    */
+    [[deprecated("Use the new finite-differences framework instead")]]
     typedef SampledCurve SampledCurveSet;
+
+    QL_DEPRECATED_ENABLE_WARNING
 
 
     // inline definitions
+
+    QL_DEPRECATED_DISABLE_WARNING
 
     inline SampledCurve::SampledCurve(Size gridSize)
     : grid_(gridSize), values_(gridSize) {}
 
     inline SampledCurve::SampledCurve(const Array& grid)
         : grid_(grid), values_(grid.size()) {}
-
-    inline SampledCurve& SampledCurve::operator=(const SampledCurve& from) {
-        SampledCurve temp(from);
-        swap(temp);
-        return *this;
-    }
 
     inline Array& SampledCurve::grid() {
         return grid_;
@@ -212,13 +229,12 @@ namespace QuantLib {
         values_ = g;
     }
 
-    inline void SampledCurve::swap(SampledCurve& from) {
-        using std::swap;
+    inline void SampledCurve::swap(SampledCurve& from) noexcept {
         grid_.swap(from.grid_);
         values_.swap(from.values_);
     }
 
-    inline void swap(SampledCurve& c1, SampledCurve& c2) {
+    inline void swap(SampledCurve& c1, SampledCurve& c2) noexcept {
         c1.swap(c2);
     }
 
@@ -228,6 +244,9 @@ namespace QuantLib {
             << a.values() << " ]";
         return out;
     }
+
+    QL_DEPRECATED_ENABLE_WARNING
+
 }
 
 

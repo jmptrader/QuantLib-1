@@ -34,7 +34,7 @@ namespace QuantLib {
         <ul>
         <li>Saturdays</li>
         <li>Sundays</li>
-        <li>New Year's Day, January 1st (possibly moved to Monday)</li>
+        <li>New Year's Day, January 1st</li>
         <li>Holy Thursday</li>
         <li>Good Friday</li>
         <li>Easter Monday</li>
@@ -52,10 +52,10 @@ namespace QuantLib {
     */
     class Iceland : public Calendar {
       private:
-        class IcexImpl : public Calendar::WesternImpl {
+        class IcexImpl final : public Calendar::WesternImpl {
           public:
-            std::string name() const { return "Iceland stock exchange"; }
-            bool isBusinessDay(const Date&) const;
+            std::string name() const override { return "Iceland stock exchange"; }
+            bool isBusinessDay(const Date&) const override;
         };
       public:
         enum Market { ICEX    //!< Iceland stock exchange

@@ -32,9 +32,9 @@ namespace QuantLib {
 
     class FdmSnapshotCondition : public StepCondition<Array> {
     public:
-        FdmSnapshotCondition(Time t);
+        explicit FdmSnapshotCondition(Time t);
 
-        void applyTo(Array& a, Time t) const;
+        void applyTo(Array& a, Time t) const override;
         Time getTime() const;       
         const Array& getValues() const;
 

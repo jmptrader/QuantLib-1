@@ -39,18 +39,18 @@ namespace QuantLib {
     */
     class BespokeCalendar : public Calendar {
       private:
-        class Impl : public Calendar::Impl {
+        class Impl final : public Calendar::Impl {
           public:
-            Impl(const std::string& name = "");
-            std::string name() const;
-            bool isWeekend(Weekday) const;
-            bool isBusinessDay(const Date&) const;
+            explicit Impl(std::string name = "");
+            std::string name() const override;
+            bool isWeekend(Weekday) const override;
+            bool isBusinessDay(const Date&) const override;
             void addWeekend(Weekday);
           private:
-            std::set<Weekday> weekend_;
             std::string name_;
+            unsigned int weekend_mask_ = 0;
         };
-        boost::shared_ptr<BespokeCalendar::Impl> bespokeImpl_;
+        ext::shared_ptr<BespokeCalendar::Impl> bespokeImpl_;
       public:
         /*! \warning different bespoke calendars created with the same
                      name (or different bespoke calendars created with

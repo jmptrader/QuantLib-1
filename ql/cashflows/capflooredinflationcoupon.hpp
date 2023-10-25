@@ -64,10 +64,10 @@ namespace QuantLib {
         \f]
      */
     class CappedFlooredYoYInflationCoupon : public YoYInflationCoupon {
-    public:
+      public:
         // we may watch an underlying coupon ...
         CappedFlooredYoYInflationCoupon(
-                const boost::shared_ptr<YoYInflationCoupon>& underlying,
+                const ext::shared_ptr<YoYInflationCoupon>& underlying,
                 Rate cap = Null<Rate>(),
                 Rate floor = Null<Rate>());
 
@@ -77,7 +77,7 @@ namespace QuantLib {
                                         const Date& startDate,
                                         const Date& endDate,
                                         Natural fixingDays,
-                                        const boost::shared_ptr<YoYInflationIndex>& index,
+                                        const ext::shared_ptr<YoYInflationIndex>& index,
                                         const Period& observationLag,
                                         const DayCounter& dayCounter,
                                         Real gearing = 1.0,
@@ -90,13 +90,15 @@ namespace QuantLib {
                              fixingDays, index, observationLag,  dayCounter,
                              gearing, spread, refPeriodStart, refPeriodEnd),
           isFloored_(false), isCapped_(false) {
+            QL_DEPRECATED_DISABLE_WARNING
             setCommon(cap, floor);
+            QL_DEPRECATED_ENABLE_WARNING
         }
 
         //! \name augmented Coupon interface
         //@{
         //! swap(let) rate
-        Rate rate() const;
+        Rate rate() const override;
         //! cap
         Rate cap() const;
         //! floor
@@ -109,25 +111,36 @@ namespace QuantLib {
 
         //! \name Observer interface
         //@{
-        void update();
+        void update() override;
         //@}
 
         //! \name Visitability
         //@{
-        virtual void accept(AcyclicVisitor& v);
+        void accept(AcyclicVisitor& v) override;
         //@}
+
+        //! this returns the expected rate before cap and floor are applied
+        Rate underlyingRate() const;
 
         bool isCapped() const { return isCapped_; }
         bool isFloored() const { return isFloored_; }
 
-        void setPricer(const boost::shared_ptr<YoYInflationCouponPricer>&);
+        void setPricer(const ext::shared_ptr<YoYInflationCouponPricer>&);
 
-    protected:
+      protected:
+        // to be made private and non-virtual after deprecation, not removed
+        /*! \deprecated Do not use this method and rely on its being
+                        called by the constructor of the base class.
+                        If you have overridden it, move the code to the
+                        constructor of your derived class.
+                        Deprecated in version 1.30.
+        */
+        QL_DEPRECATED
         virtual void setCommon(Rate cap, Rate floor);
 
         // data, we only use underlying_ if it was constructed that way,
         // generally we use the shared_ptr conversion to boolean to test
-        boost::shared_ptr<YoYInflationCoupon> underlying_;
+        ext::shared_ptr<YoYInflationCoupon> underlying_;
         bool isFloored_, isCapped_;
         Rate cap_, floor_;
     };

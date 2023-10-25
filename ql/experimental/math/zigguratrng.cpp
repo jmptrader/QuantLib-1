@@ -137,7 +137,7 @@ namespace QuantLib {
         };
 
         // values of 2^{-24}*x[i]. w_[0] is special.
-        const Real w_[128] = {
+        const double w_[128] = {
             2.213171867573477E-007, 1.623158840564778E-008,
             2.162882274558596E-008, 2.542424120326624E-008,
             2.845751269184242E-008, 3.103351823837397E-008,
@@ -211,15 +211,13 @@ namespace QuantLib {
 
     Real ZigguratRng::nextGaussian() const {
         static const int c[2] = {-1, 1};
-        unsigned long i, j;
-        int f;
         Real x;
 
         for (;;) {
-            j = mt32_.nextInt32(); // generate 32 bits of randomness
-            f = j & 1; // 1 bit to choose a tails
+            unsigned long j = mt32_.nextInt32(); // generate 32 bits of randomness
+            int f = j & 1; // 1 bit to choose a tails
             j >>= 1;
-            i = j & 0x7f; // 7 bits to choose a strip
+            unsigned long i = j & 0x7f; // 7 bits to choose a strip
             j >>= 7; // the last 24 bits for accepttion/rejection
             x = (c[f]*static_cast<long>(j))*w_[i]; // x is uniform
                                                    // within the i-th strip

@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2005 StatPro Italia srl
+ Copyright (C) 2021, 2022 Ralf Konrad Eckel
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -21,6 +22,7 @@
 #define quantlib_test_bermudan_swaption_hpp
 
 #include <boost/test/unit_test.hpp>
+#include "speedlevel.hpp"
 
 /* remember to document new and/or updated tests in the Doxygen
    comment block of the corresponding class */
@@ -28,7 +30,9 @@
 class BermudanSwaptionTest {
   public:
     static void testCachedValues();
-    static boost::unit_test_framework::test_suite* suite();
+    static void testCachedG2Values();
+    static void testTreeEngineTimeSnapping();
+    static boost::unit_test_framework::test_suite* suite(SpeedLevel);
 };
 
 

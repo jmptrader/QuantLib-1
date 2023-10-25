@@ -20,7 +20,8 @@
 
 #include <ql/experimental/credit/gaussianlhplossmodel.hpp>
 
-#include <boost/make_shared.hpp>
+#ifndef QL_PATCH_SOLARIS
+
 
 using std::sqrt;
 
@@ -43,8 +44,8 @@ namespace QuantLib {
           biphi_(-sqrt(correlQuote->value()))
         {
             registerWith(correl_);
-            for(Size i=0; i<quotes.size(); i++)
-                registerWith(quotes[i]);
+            for (const auto& quote : quotes)
+                registerWith(quote);
     }
 
     GaussianLHPLossModel::GaussianLHPLossModel(
@@ -55,13 +56,12 @@ namespace QuantLib {
             //g++ complains default value not seen as typename
             GaussianCopulaPolicy::initTraits()),
           sqrt1minuscorrel_(std::sqrt(1.-correlation)),
-          correl_(Handle<Quote>(boost::make_shared<SimpleQuote>(correlation))),
+          correl_(Handle<Quote>(ext::make_shared<SimpleQuote>(correlation))),
           beta_(sqrt(correlation)),
           biphi_(-sqrt(correlation))
         {
-            for(Size i=0; i<recoveries.size(); i++)
-                rrQuotes_.push_back(Handle<RecoveryRateQuote>(
-                boost::make_shared<RecoveryRateQuote>(recoveries[i])));
+        for (Real recoverie : recoveries)
+            rrQuotes_.emplace_back(ext::make_shared<RecoveryRateQuote>(recoverie));
         }
 
         GaussianLHPLossModel::GaussianLHPLossModel(
@@ -77,9 +77,8 @@ namespace QuantLib {
           biphi_(-sqrt(correlQuote->value()))
         {
             registerWith(correl_);
-            for(Size i=0; i<recoveries.size(); i++)
-                rrQuotes_.push_back(Handle<RecoveryRateQuote>(
-                boost::make_shared<RecoveryRateQuote>(recoveries[i])));
+            for (Real recoverie : recoveries)
+                rrQuotes_.emplace_back(ext::make_shared<RecoveryRateQuote>(recoverie));
         }
 
 
@@ -202,3 +201,5 @@ namespace QuantLib {
         }
 
 }
+
+#endif

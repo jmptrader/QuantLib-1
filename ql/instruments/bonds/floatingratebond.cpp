@@ -31,7 +31,7 @@ namespace QuantLib {
                            Natural settlementDays,
                            Real faceAmount,
                            const Schedule& schedule,
-                           const boost::shared_ptr<IborIndex>& iborIndex,
+                           const ext::shared_ptr<IborIndex>& iborIndex,
                            const DayCounter& paymentDayCounter,
                            BusinessDayConvention paymentConvention,
                            Natural fixingDays,
@@ -41,7 +41,11 @@ namespace QuantLib {
                            const std::vector<Rate>& floors,
                            bool inArrears,
                            Real redemption,
-                           const Date& issueDate)
+                           const Date& issueDate,
+                           const Period& exCouponPeriod,
+                           const Calendar& exCouponCalendar,
+                           const BusinessDayConvention exCouponConvention,
+                           bool exCouponEndOfMonth)
     : Bond(settlementDays, schedule.calendar(), issueDate) {
 
         maturityDate_ = schedule.endDate();
@@ -55,77 +59,8 @@ namespace QuantLib {
             .withSpreads(spreads)
             .withCaps(caps)
             .withFloors(floors)
-            .inArrears(inArrears);
-
-        addRedemptionsToCashflows(std::vector<Real>(1, redemption));
-
-        QL_ENSURE(!cashflows().empty(), "bond with no cashflows!");
-        QL_ENSURE(redemptions_.size() == 1, "multiple redemptions created");
-
-        registerWith(iborIndex);
-    }
-
-    FloatingRateBond::FloatingRateBond(
-                           Natural settlementDays,
-                           Real faceAmount,
-                           const Date& startDate,
-                           const Date& maturityDate,
-                           Frequency couponFrequency,
-                           const Calendar& calendar,
-                           const boost::shared_ptr<IborIndex>& iborIndex,
-                           const DayCounter& accrualDayCounter,
-                           BusinessDayConvention accrualConvention,
-                           BusinessDayConvention paymentConvention,
-                           Natural fixingDays,
-                           const std::vector<Real>& gearings,
-                           const std::vector<Spread>& spreads,
-                           const std::vector<Rate>& caps,
-                           const std::vector<Rate>& floors,
-                           bool inArrears,
-                           Real redemption,
-                           const Date& issueDate,
-                           const Date& stubDate,
-                           DateGeneration::Rule rule,
-                           bool endOfMonth)
-    : Bond(settlementDays, calendar, issueDate) {
-
-        maturityDate_ = maturityDate;
-
-        Date firstDate, nextToLastDate;
-        switch (rule) {
-          case DateGeneration::Backward:
-            firstDate = Date();
-            nextToLastDate = stubDate;
-            break;
-          case DateGeneration::Forward:
-            firstDate = stubDate;
-            nextToLastDate = Date();
-            break;
-          case DateGeneration::Zero:
-          case DateGeneration::ThirdWednesday:
-          case DateGeneration::Twentieth:
-          case DateGeneration::TwentiethIMM:
-            QL_FAIL("stub date (" << stubDate << ") not allowed with " <<
-                    rule << " DateGeneration::Rule");
-          default:
-            QL_FAIL("unknown DateGeneration::Rule (" << Integer(rule) << ")");
-        }
-
-        Schedule schedule(startDate, maturityDate_, Period(couponFrequency),
-                          calendar_, accrualConvention, accrualConvention,
-                          rule, endOfMonth,
-                          firstDate, nextToLastDate);
-
-        cashflows_ = IborLeg(schedule, iborIndex)
-            .withNotionals(faceAmount)
-            .withPaymentDayCounter(accrualDayCounter)
-            .withPaymentAdjustment(paymentConvention)
-            .withFixingDays(fixingDays)
-            .withGearings(gearings)
-            .withSpreads(spreads)
-            .withCaps(caps)
-            .withFloors(floors)
-            .inArrears(inArrears);
+            .inArrears(inArrears)
+            .withExCouponPeriod(exCouponPeriod, exCouponCalendar, exCouponConvention, exCouponEndOfMonth);
 
         addRedemptionsToCashflows(std::vector<Real>(1, redemption));
 

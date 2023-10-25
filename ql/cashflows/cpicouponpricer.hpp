@@ -37,12 +37,22 @@ namespace QuantLib {
               volatility-dependent coupons you need to implement the descendents.
     */
     class CPICouponPricer : public InflationCouponPricer {
-    public:
-        CPICouponPricer(const Handle<CPIVolatilitySurface>& capletVol
-                                 = Handle<CPIVolatilitySurface>());
+      public:
+        explicit CPICouponPricer(Handle<YieldTermStructure> nominalTermStructure = Handle<YieldTermStructure>());
+
+        explicit CPICouponPricer(Handle<CPIVolatilitySurface> capletVol,
+                                 Handle<YieldTermStructure> nominalTermStructure = Handle<YieldTermStructure>());
+
+        QL_DEPRECATED_DISABLE_WARNING
+        ~CPICouponPricer() override = default;
+        QL_DEPRECATED_ENABLE_WARNING
 
         virtual Handle<CPIVolatilitySurface> capletVolatility() const{
             return capletVol_;
+        }
+
+        virtual Handle<YieldTermStructure> nominalTermStructure() const{
+            return nominalTermStructure_;
         }
 
         virtual void setCapletVolatility(
@@ -51,36 +61,52 @@ namespace QuantLib {
 
         //! \name InflationCouponPricer interface
         //@{
-        virtual Real swapletPrice() const;
-        virtual Rate swapletRate() const;
-        virtual Real capletPrice(Rate effectiveCap) const;
-        virtual Rate capletRate(Rate effectiveCap) const;
-        virtual Real floorletPrice(Rate effectiveFloor) const;
-        virtual Rate floorletRate(Rate effectiveFloor) const;
-        virtual void initialize(const InflationCoupon&);
+        Real swapletPrice() const override;
+        Rate swapletRate() const override;
+        Real capletPrice(Rate effectiveCap) const override;
+        Rate capletRate(Rate effectiveCap) const override;
+        Real floorletPrice(Rate effectiveFloor) const override;
+        Rate floorletRate(Rate effectiveFloor) const override;
+        void initialize(const InflationCoupon&) override;
         //@}
 
+        virtual Rate accruedRate(Date settlementDate) const;
 
-    protected:
-        //! can replace this if really required
+      protected:
         virtual Real optionletPrice(Option::Type optionType,
                                     Real effStrike) const;
 
-        //! usually only need implement this (of course they may need
-        //! to re-implement initialize too ...)
+        virtual Real optionletRate(Option::Type optionType,
+                                   Real effStrike) const;
+
+        /*! Derived classes usually only need to implement this.
+
+            The name of the method is misleading.  This actually
+            returns the rate of the optionlet (so not discounted and
+            not accrued).
+        */
         virtual Real optionletPriceImp(Option::Type, Real strike,
                                        Real forward, Real stdDev) const;
+
+        /*! \deprecated Don't use this method.  In derived classes, override accruedRate.
+                        Deprecated in version 1.31.
+        */
+        [[deprecated("Do not use this method. In derived classes, override accruedRate.")]]
         virtual Rate adjustedFixing(Rate fixing = Null<Rate>()) const;
 
-        //! data
+        // data
         Handle<CPIVolatilitySurface> capletVol_;
+        Handle<YieldTermStructure> nominalTermStructure_;
         const CPICoupon* coupon_;
         Real gearing_;
+        /*! \deprecated Don't use this data member. A spread doesn't make sense for this coupon.
+                        Deprecated in version 1.31.
+        */
+        [[deprecated("Do not use this data member. A spread doesn't make sense for these coupons.")]]
         Spread spread_;
         Real discount_;
-        Real spreadLegValue_;
     };
-
-}   // namespace QuantLib
+    
+}
 
 #endif

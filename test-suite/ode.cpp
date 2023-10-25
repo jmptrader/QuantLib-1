@@ -20,9 +20,10 @@
 
 #include "ode.hpp"
 #include "utilities.hpp"
-#include <ql/experimental/math/expm.hpp>
+#include <ql/math/matrixutilities/expm.hpp>
 #include <ql/math/ode/adaptiverungekutta.hpp>
 #include <complex>
+
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
@@ -38,14 +39,13 @@ namespace {
 
     struct ode2 {
         std::complex<Real> operator()(Real x,
-                                      std::complex<Real> y) {
+                                      const std::complex<Real>& y) {
             return std::complex<Real>(0.0,1.0)*y;
         }
     };
 
     struct ode3 {
-        Disposable<std::vector<Real> > operator()(Real x,
-                                                  const std::vector<Real>& y) {
+        std::vector<Real> operator()(Real x, const std::vector<Real>& y) {
             std::vector<Real> r(2);
             r[0] = y[1]; r[1] = -y[0];
             return r;
@@ -53,8 +53,8 @@ namespace {
     };
 
     struct ode4 {
-        Disposable<std::vector<std::complex<Real> > > operator()(
-                                  std::complex<Real> x,
+        std::vector<std::complex<Real> > operator()(
+                                  const std::complex<Real>& x,
                                   const std::vector<std::complex<Real> >& y) {
             std::vector<std::complex<Real> > r(2);
             r[0] = y[1]; r[1] = -y[0];
@@ -197,8 +197,8 @@ void OdeTest::testMatrixExponentialOfZero() {
 
     Matrix m(3, 3, 0.0);
 
-    const Real tol = 100*QL_EPSILON;
-    const Time t=1.0;
+    constexpr double tol = 100*QL_EPSILON;
+    constexpr double t=1.0;
     const Matrix calculated = Expm(m, t);
 
     for (Size i=0; i < calculated.rows(); ++i) {
@@ -213,7 +213,7 @@ void OdeTest::testMatrixExponentialOfZero() {
 }
 
 test_suite* OdeTest::suite() {
-    test_suite* suite = BOOST_TEST_SUITE("ode tests");
+    auto* suite = BOOST_TEST_SUITE("ode tests");
     suite->add(QUANTLIB_TEST_CASE(&OdeTest::testAdaptiveRungeKutta));
     suite->add(QUANTLIB_TEST_CASE(&OdeTest::testMatrixExponential));
     suite->add(QUANTLIB_TEST_CASE(&OdeTest::testMatrixExponentialOfZero));
