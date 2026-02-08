@@ -15,16 +15,18 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "interpolations.hpp"
+#include "preconditions.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/experimental/volatility/noarbsabrinterpolation.hpp>
+#include <ql/experimental/math/laplaceinterpolation.hpp>
 #include <ql/math/bspline.hpp>
 #include <ql/math/functional.hpp>
 #include <ql/math/integrals/simpsonintegral.hpp>
@@ -43,162 +45,195 @@
 #include <ql/math/optimization/levenbergmarquardt.hpp>
 #include <ql/math/randomnumbers/sobolrsg.hpp>
 #include <ql/math/richardsonextrapolation.hpp>
-#include <ql/tuple.hpp>
 #include <ql/utilities/dataformatters.hpp>
 #include <ql/utilities/null.hpp>
 #include <cmath>
 #include <utility>
+#include <tuple>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-    std::vector<Real> xRange(Real start, Real finish, Size points) {
-        std::vector<Real> x(points);
-        Real dx = (finish-start)/(points-1);
-        for (Size i=0; i<points-1; i++)
-            x[i] = start+i*dx;
-        x[points-1] = finish;
-        return x;
-    }
+BOOST_AUTO_TEST_SUITE(InterpolationTests)
 
-    std::vector<Real> gaussian(const std::vector<Real>& x) {
-        std::vector<Real> y(x.size());
-        for (Size i=0; i<x.size(); i++)
-            y[i] = std::exp(-x[i]*x[i]);
-        return y;
-    }
+std::vector<Real> xRange(Real start, Real finish, Size points) {
+    std::vector<Real> x(points);
+    Real dx = (finish-start)/(points-1);
+    for (Size i=0; i<points-1; i++)
+        x[i] = start+i*dx;
+    x[points-1] = finish;
+    return x;
+}
 
-    std::vector<Real> parabolic(const std::vector<Real>& x) {
-        std::vector<Real> y(x.size());
-        for (Size i=0; i<x.size(); i++)
-            y[i] = -x[i]*x[i];
-        return y;
-    }
+std::vector<Real> gaussian(const std::vector<Real>& x) {
+    std::vector<Real> y(x.size());
+    for (Size i=0; i<x.size(); i++)
+        y[i] = std::exp(-x[i]*x[i]);
+    return y;
+}
 
-    template <class I, class J>
-    void checkValues(const char* type,
-                     const CubicInterpolation& cubic,
-                     I xBegin, I xEnd, J yBegin) {
-        Real tolerance = 2.0e-15;
-        while (xBegin != xEnd) {
-            Real interpolated = cubic(*xBegin);
-            if (std::fabs(interpolated-*yBegin) > tolerance) {
-                BOOST_ERROR(type << " interpolation failed at x = " << *xBegin
-                            << std::scientific
-                            << "\n    interpolated value: " << interpolated
-                            << "\n    expected value:     " << *yBegin
-                            << "\n    error:              "
-                            << std::fabs(interpolated-*yBegin));
-            }
-            ++xBegin; ++yBegin;
-        }
-    }
+std::vector<Real> parabolic(const std::vector<Real>& x) {
+    std::vector<Real> y(x.size());
+    for (Size i=0; i<x.size(); i++)
+        y[i] = -x[i]*x[i];
+    return y;
+}
 
-    void check1stDerivativeValue(const char* type,
-                                 const CubicInterpolation& cubic,
-                                 Real x,
-                                 Real value) {
-        Real tolerance = 1.0e-14;
-        Real interpolated = cubic.derivative(x);
-        Real error = std::fabs(interpolated-value);
-        if (error > tolerance) {
-            BOOST_ERROR(type << " interpolation first derivative failure\n"
-                        << "at x = " << x
-                        << "\n    interpolated value: " << interpolated
-                        << "\n    expected value:     " << value
+template <class I, class J>
+void checkValues(const char* type,
+                 const CubicInterpolation& cubic,
+                 I xBegin, I xEnd, J yBegin) {
+    Real tolerance = 2.0e-15;
+    while (xBegin != xEnd) {
+        Real interpolated = cubic(*xBegin);
+        if (std::fabs(interpolated-*yBegin) > tolerance) {
+            BOOST_ERROR(type << " interpolation failed at x = " << *xBegin
                         << std::scientific
-                        << "\n    error:              " << error);
-        }
-    }
-
-    void check2ndDerivativeValue(const char* type,
-                                 const CubicInterpolation& cubic,
-                                 Real x,
-                                 Real value) {
-        Real tolerance = 1.0e-13;
-        Real interpolated = cubic.secondDerivative(x);
-        Real error = std::fabs(interpolated-value);
-        if (error > tolerance) {
-            BOOST_ERROR(type << " interpolation second derivative failure\n"
-                        << "at x = " << x
                         << "\n    interpolated value: " << interpolated
-                        << "\n    expected value:     " << value
-                        << std::scientific
-                        << "\n    error:              " << error);
+                        << "\n    expected value:     " << *yBegin
+                        << "\n    error:              "
+                        << std::fabs(interpolated-*yBegin));
+        }
+        ++xBegin; ++yBegin;
+    }
+}
+
+void check1stDerivativeValue(const char* type,
+                             const CubicInterpolation& cubic,
+                             Real x,
+                             Real value) {
+    Real tolerance = 1.0e-14;
+    Real interpolated = cubic.derivative(x);
+    Real error = std::fabs(interpolated-value);
+    if (error > tolerance) {
+        BOOST_ERROR(type << " interpolation first derivative failure\n"
+                    << "at x = " << x
+                    << "\n    interpolated value: " << interpolated
+                    << "\n    expected value:     " << value
+                    << std::scientific
+                    << "\n    error:              " << error);
+    }
+}
+
+void check2ndDerivativeValue(const char* type,
+                             const CubicInterpolation& cubic,
+                             Real x,
+                             Real value) {
+    Real tolerance = 1.0e-13;
+    Real interpolated = cubic.secondDerivative(x);
+    Real error = std::fabs(interpolated-value);
+    if (error > tolerance) {
+        BOOST_ERROR(type << " interpolation second derivative failure\n"
+                    << "at x = " << x
+                    << "\n    interpolated value: " << interpolated
+                    << "\n    expected value:     " << value
+                    << std::scientific
+                    << "\n    error:              " << error);
+    }
+}
+
+void checkNotAKnotCondition(const char* type,
+                            const CubicInterpolation& cubic) {
+    Real tolerance = 1.0e-14;
+    const std::vector<Real>& c = cubic.cCoefficients();
+    if (std::fabs(c[0]-c[1]) > tolerance) {
+        BOOST_ERROR(type << " interpolation failure"
+                    << "\n    cubic coefficient of the first"
+                    << " polinomial is " << c[0]
+                    << "\n    cubic coefficient of the second"
+                    << " polinomial is " << c[1]);
+    }
+    Size n = c.size();
+    if (std::fabs(c[n-2]-c[n-1]) > tolerance) {
+        BOOST_ERROR(type << " interpolation failure"
+                    << "\n    cubic coefficient of the 2nd to last"
+                    << " polinomial is " << c[n-2]
+                    << "\n    cubic coefficient of the last"
+                    << " polinomial is " << c[n-1]);
+    }
+}
+
+void checkSymmetry(const char* type,
+                   const CubicInterpolation& cubic,
+                   Real xMin) {
+    Real tolerance = 1.0e-15;
+    for (Real x = xMin; x < 0.0; x += 0.1) {
+        Real y1 = cubic(x), y2 = cubic(-x);
+        if (std::fabs(y1-y2) > tolerance) {
+            BOOST_ERROR(type << " interpolation not symmetric"
+                        << "\n    x = " << x
+                        << "\n    g(x)  = " << y1
+                        << "\n    g(-x) = " << y2
+                        << "\n    error:  " << std::fabs(y1-y2));
         }
     }
+}
 
-    void checkNotAKnotCondition(const char* type,
-                                const CubicInterpolation& cubic) {
-        Real tolerance = 1.0e-14;
-        const std::vector<Real>& c = cubic.cCoefficients();
-        if (std::fabs(c[0]-c[1]) > tolerance) {
-            BOOST_ERROR(type << " interpolation failure"
-                        << "\n    cubic coefficient of the first"
-                        << " polinomial is " << c[0]
-                        << "\n    cubic coefficient of the second"
-                        << " polinomial is " << c[1]);
-        }
-        Size n = c.size();
-        if (std::fabs(c[n-2]-c[n-1]) > tolerance) {
-            BOOST_ERROR(type << " interpolation failure"
-                        << "\n    cubic coefficient of the 2nd to last"
-                        << " polinomial is " << c[n-2]
-                        << "\n    cubic coefficient of the last"
-                        << " polinomial is " << c[n-1]);
-        }
+template <class F>
+class errorFunction {
+  public:
+    errorFunction(F f) : f_(std::move(f)) {}
+    Real operator()(Real x) const {
+        Real temp = f_(x)-std::exp(-x*x);
+        return temp*temp;
     }
+  private:
+    F f_;
+};
 
-    void checkSymmetry(const char* type,
-                       const CubicInterpolation& cubic,
-                       Real xMin) {
-        Real tolerance = 1.0e-15;
-        for (Real x = xMin; x < 0.0; x += 0.1) {
-            Real y1 = cubic(x), y2 = cubic(-x);
-            if (std::fabs(y1-y2) > tolerance) {
-                BOOST_ERROR(type << " interpolation not symmetric"
-                            << "\n    x = " << x
-                            << "\n    g(x)  = " << y1
-                            << "\n    g(-x) = " << y2
-                            << "\n    error:  " << std::fabs(y1-y2));
-            }
-        }
+template <class F>
+errorFunction<F> make_error_function(const F& f) {
+    return errorFunction<F>(f);
+}
+
+Real multif(Real s, Real t, Real u, Real v, Real w) {
+    return std::sqrt(s * std::sinh(std::log(t)) +
+                     std::exp(std::sin(u) * std::sin(3 * v)) +
+                     std::sinh(std::log(v * w)));
+}
+
+Real epanechnikovKernel(Real u){
+
+    if(std::fabs(u)<=1){
+        return (3.0/4.0)*(1-u*u);
+    }else{
+        return 0.0;
     }
+}
 
-    template <class F>
-    class errorFunction {
-      public:
-        errorFunction(F f) : f_(std::move(f)) {}
-        Real operator()(Real x) const {
-            Real temp = f_(x)-std::exp(-x*x);
-            return temp*temp;
-        }
-      private:
-        F f_;
-    };
+struct NotThrown {};
 
-    template <class F>
-    errorFunction<F> make_error_function(const F& f) {
-        return errorFunction<F>(f);
+Integer sign(Real y1, Real y2) {
+    return y1 == y2 ? 0 :
+           y1 < y2 ?  1 :
+                     -1 ;
+}
+
+class GF {
+  public:
+    GF(Real exponent, Real factor)
+    : exponent_(exponent), factor_(factor) {}
+
+    Real operator()(Real h) const {
+        return M_PI + factor_*std::pow(h, exponent_)
+            + std::pow(factor_*h, exponent_ + 1);
     }
+  private:
+    const Real exponent_, factor_;
+};
 
-    Real multif(Real s, Real t, Real u, Real v, Real w) {
-        return std::sqrt(s * std::sinh(std::log(t)) +
-                         std::exp(std::sin(u) * std::sin(3 * v)) +
-                         std::sinh(std::log(v * w)));
-    }
+Real limCos(Real h) {
+    return -std::cos(h);
+}
 
-    Real epanechnikovKernel(Real u){
+Real f(Real h) {
+    return std::pow( 1.0 + h, 1/h);
+}
 
-        if(std::fabs(u)<=1){
-            return (3.0/4.0)*(1-u*u);
-        }else{
-            return 0.0;
-        }
-    }
-
+Real lagrangeTestFct(Real x) {
+    return std::fabs(x) + 0.5*x - x*x;
 }
 
 
@@ -206,7 +241,8 @@ namespace {
    SIAM J. of Scientific and Statistical Computing, v. 4, 1983, pp. 645-654.
    http://math.lanl.gov/~mac/papers/numerics/H83.pdf
 */
-void InterpolationTest::testSplineErrorOnGaussianValues() {
+
+BOOST_AUTO_TEST_CASE(testSplineErrorOnGaussianValues) {
 
     BOOST_TEST_MESSAGE("Testing spline approximation on Gaussian data sets...");
 
@@ -230,7 +266,7 @@ void InterpolationTest::testSplineErrorOnGaussianValues() {
     // results from the paper
     Real scaleFactor = 1.9;
 
-    for (Size i=0; i<LENGTH(points); i++) {
+    for (Size i=0; i<std::size(points); i++) {
         Size n = points[i];
         std::vector<Real> x = xRange(-1.7, 1.9, n);
         std::vector<Real> y = gaussian(x);
@@ -271,7 +307,8 @@ void InterpolationTest::testSplineErrorOnGaussianValues() {
    SIAM J. of Scientific and Statistical Computing, v. 4, 1983, pp. 645-654.
    http://math.lanl.gov/~mac/papers/numerics/H83.pdf
 */
-void InterpolationTest::testSplineOnGaussianValues() {
+
+BOOST_AUTO_TEST_CASE(testSplineOnGaussianValues) {
 
     BOOST_TEST_MESSAGE("Testing spline interpolation on a Gaussian data set...");
 
@@ -340,7 +377,8 @@ void InterpolationTest::testSplineOnGaussianValues() {
    SIAM J. of Scientific and Statistical Computing, v. 4, 1983, pp. 645-654.
    http://math.lanl.gov/~mac/papers/numerics/H83.pdf
 */
-void InterpolationTest::testSplineOnRPN15AValues() {
+
+BOOST_AUTO_TEST_CASE(testSplineOnRPN15AValues) {
 
     BOOST_TEST_MESSAGE("Testing spline interpolation on RPN15A data set...");
 
@@ -490,7 +528,8 @@ void InterpolationTest::testSplineOnRPN15AValues() {
    Applied Linear Algebra and Numerical Analysis AMATH 352 Lecture Notes
    http://www.amath.washington.edu/courses/352-winter-2002/spline_note.pdf
 */
-void InterpolationTest::testSplineOnGenericValues() {
+
+BOOST_AUTO_TEST_CASE(testSplineOnGenericValues) {
 
     BOOST_TEST_MESSAGE("Testing spline interpolation on generic values...");
 
@@ -499,7 +538,7 @@ void InterpolationTest::testSplineOnGenericValues() {
     const Real generic_natural_y2[] = { 0.0, 1.5, -1.5, 0.0 };
 
     Real interpolated, error;
-    Size i, n = LENGTH(generic_x);
+    Size i, n = std::size(generic_x);
     std::vector<Real> x35(3);
 
     // Natural spline
@@ -566,8 +605,7 @@ void InterpolationTest::testSplineOnGenericValues() {
     }
 }
 
-
-void InterpolationTest::testSimmetricEndConditions() {
+BOOST_AUTO_TEST_CASE(testSimmetricEndConditions) {
 
     BOOST_TEST_MESSAGE("Testing symmetry of spline interpolation "
                        "end-conditions...");
@@ -601,8 +639,7 @@ void InterpolationTest::testSimmetricEndConditions() {
     checkSymmetry("MC not-a-knot spline", f, x[0]);
 }
 
-
-void InterpolationTest::testDerivativeEndConditions() {
+BOOST_AUTO_TEST_CASE(testDerivativeEndConditions) {
 
     BOOST_TEST_MESSAGE("Testing derivative end-conditions "
                        "for spline interpolation...");
@@ -727,7 +764,8 @@ void InterpolationTest::testDerivativeEndConditions() {
    Hermite Interpolation"
    Mathematics Of Computation, v. 52, n. 186, April 1989, pp. 471-494.
 */
-void InterpolationTest::testNonRestrictiveHymanFilter() {
+
+BOOST_AUTO_TEST_CASE(testNonRestrictiveHymanFilter) {
 
     BOOST_TEST_MESSAGE("Testing non-restrictive Hyman filter...");
 
@@ -790,7 +828,7 @@ void InterpolationTest::testNonRestrictiveHymanFilter() {
 
 }
 
-void InterpolationTest::testMultiSpline() {
+BOOST_AUTO_TEST_CASE(testMultiSpline) {
     BOOST_TEST_MESSAGE("Testing N-dimensional cubic spline...");
 
     std::vector<Size> dim(5);
@@ -890,13 +928,7 @@ void InterpolationTest::testMultiSpline() {
     }
 }
 
-namespace {
-
-    struct NotThrown {};
-
-}
-
-void InterpolationTest::testAsFunctor() {
+BOOST_AUTO_TEST_CASE(testAsFunctor) {
 
     BOOST_TEST_MESSAGE("Testing use of interpolations as functors...");
 
@@ -907,7 +939,7 @@ void InterpolationTest::testAsFunctor() {
     f.update();
 
     const Real x2[] = { -2.0, -1.0, 0.0, 1.0, 3.0, 4.0, 5.0, 6.0, 7.0 };
-    Size N = LENGTH(x2);
+    Size N = std::size(x2);
     std::vector<Real> y2(N);
     Real tolerance = 1.0e-12;
 
@@ -940,18 +972,7 @@ void InterpolationTest::testAsFunctor() {
     }
 }
 
-
-namespace {
-
-    Integer sign(Real y1, Real y2) {
-        return y1 == y2 ? 0 :
-               y1 < y2 ?  1 :
-                         -1 ;
-    }
-
-}
-
-void InterpolationTest::testFritschButland() {
+BOOST_AUTO_TEST_CASE(testFritschButland) {
 
     BOOST_TEST_MESSAGE("Testing Fritsch-Butland interpolation...");
 
@@ -986,8 +1007,7 @@ void InterpolationTest::testFritschButland() {
     }
 }
 
-
-void InterpolationTest::testBackwardFlat() {
+BOOST_AUTO_TEST_CASE(testBackwardFlat) {
 
     BOOST_TEST_MESSAGE("Testing backward-flat interpolation...");
 
@@ -997,7 +1017,7 @@ void InterpolationTest::testBackwardFlat() {
     Interpolation f = BackwardFlatInterpolation(std::begin(x), std::end(x), std::begin(y));
     f.update();
 
-    Size N = LENGTH(x);
+    Size N = std::size(x);
     Size i;
     Real tolerance = 1.0e-12;
 
@@ -1105,7 +1125,7 @@ void InterpolationTest::testBackwardFlat() {
 
 }
 
-void InterpolationTest::testForwardFlat() {
+BOOST_AUTO_TEST_CASE(testForwardFlat) {
 
     BOOST_TEST_MESSAGE("Testing forward-flat interpolation...");
 
@@ -1115,7 +1135,7 @@ void InterpolationTest::testForwardFlat() {
     Interpolation f = ForwardFlatInterpolation(std::begin(x), std::end(x), std::begin(y));
     f.update();
 
-    Size N = LENGTH(x);
+    Size N = std::size(x);
     Size i;
     Real tolerance = 1.0e-12;
 
@@ -1222,7 +1242,7 @@ void InterpolationTest::testForwardFlat() {
     }
 }
 
-void InterpolationTest::testSabrInterpolation(){
+BOOST_AUTO_TEST_CASE(testSabrInterpolation){
 
     BOOST_TEST_MESSAGE("Testing Sabr interpolation...");
 
@@ -1276,10 +1296,6 @@ void InterpolationTest::testSabrInterpolation(){
     }
 
     // Test SABR calibration against input parameters
-    // Use default values (but not null, since then parameters
-    // will then not be fixed during optimization, see the
-    // interpolation constructor, thus rendering the test cases
-    // with fixed parameters non-sensical)
     Real alphaGuess = std::sqrt(0.2);
     Real betaGuess = 0.5;
     Real nuGuess = std::sqrt(0.4);
@@ -1383,7 +1399,75 @@ void InterpolationTest::testSabrInterpolation(){
 }
 
 
-void InterpolationTest::testKernelInterpolation() {
+struct SabrTestCase {
+    Time expiry;
+    Real forward;
+    Real alpha;
+    Real beta;
+    Real nu;
+    Real rho;
+};
+
+BOOST_AUTO_TEST_CASE(testSabrGuess){
+
+    BOOST_TEST_MESSAGE("Testing Sabr guess...");
+
+    #if BOOST_VERSION >= 107800
+
+    // table 3 in Le Floc'h and Kennedy.
+    // They only seems to use it with lognormal volatility
+    // and no shift; we extend the test here.
+    SabrTestCase cases[] = {
+        {0.058, 2016, 0.271, 1.0, 1.010, -0.345},
+        {0.153, 2016, 0.256, 1.0, 0.933, -0.321},
+        {0.230, 2016, 0.256, 1.0, 0.820, -0.346},
+        {0.479, 2016, 0.255, 1.0, 0.629, -0.370},
+        {0.729, 2016, 0.257, 1.0, 0.528, -0.403},
+        {1.227, 2016, 0.260, 1.0, 0.448, -0.429},
+        {1.726, 2016, 0.261, 1.0, 0.392, -0.440},
+        {2.244, 2016, 0.262, 1.0, 0.355, -0.445},
+        {2.742, 2016, 0.262, 1.0, 0.329, -0.445},
+        {3.241, 2016, 0.262, 1.0, 0.310, -0.447},
+        {4.239, 2016, 0.263, 1.0, 0.284, -0.452}
+    };
+
+    for (const auto& c : cases) {
+        for (auto type: {VolatilityType::ShiftedLognormal, VolatilityType::Normal}) {
+            for (auto shift: {0.0, 0.01, 0.1}) {
+                // strikes at forward and plus or minus 5%
+                Real k_m = c.forward * 0.95, k_0 = c.forward, k_p = c.forward * 1.05;
+                Real vol_m = shiftedSabrVolatility(k_m, c.forward, c.expiry, c.alpha, c.beta, c.nu, c.rho, shift, type);
+                Real vol_0 = shiftedSabrVolatility(k_0, c.forward, c.expiry, c.alpha, c.beta, c.nu, c.rho, shift, type);
+                Real vol_p = shiftedSabrVolatility(k_p, c.forward, c.expiry, c.alpha, c.beta, c.nu, c.rho, shift, type);
+
+                // try to invert smile and retrieve parameters
+                auto [alpha, beta, nu, rho] = sabrGuess(k_m, vol_m, k_0, vol_0, k_p, vol_p,
+                                                        c.forward, c.expiry, c.beta,
+                                                        shift, type);
+
+                if (std::fabs(alpha - c.alpha) > 0.0001)
+                    BOOST_ERROR("alpha = " << alpha << ", expected = " << c.alpha << ", error = " << alpha - c.alpha);
+                BOOST_CHECK_EQUAL(beta, c.beta);
+                if (std::fabs(nu - c.nu) > 0.01)
+                    BOOST_ERROR("nu = " << nu << ", expected = " << c.nu << ", error = " << nu - c.nu);
+                if (std::fabs(rho - c.rho) > 0.005)
+                    BOOST_ERROR("rho = " << rho << ", expected = " << c.rho << ", error = " << rho - c.rho);
+            }
+        }
+    }
+
+    #else
+
+    BOOST_CHECK_EXCEPTION(sabrGuess(99, 0.32, 100, 0.30, 101, 0.31,
+                                    100, 1.0, 0.5, 0.0, VolatilityType::Normal),
+                          Error,
+                          ExpectedErrorMessage("Boost 1.78 or later is required"));
+
+    #endif
+}
+
+
+BOOST_AUTO_TEST_CASE(testKernelInterpolation) {
 
     BOOST_TEST_MESSAGE("Testing kernel 1D interpolation...");
 
@@ -1454,7 +1538,7 @@ void InterpolationTest::testKernelInterpolation() {
 
     for (Size j=0; j< ytd.size(); ++j) {
         std::vector<Real> currY=yd[j];
-        std::vector<Real> currTY=ytd[j];
+        const std::vector<Real>& currTY=ytd[j];
 
         // Build interpolation according to original grid + y-values
         KernelInterpolation f(deltaGrid.begin(), deltaGrid.end(),
@@ -1482,8 +1566,7 @@ void InterpolationTest::testKernelInterpolation() {
     }
 }
 
-
-void InterpolationTest::testKernelInterpolation2D(){
+BOOST_AUTO_TEST_CASE(testKernelInterpolation2D){
 
     // No test values known from the literature.
     // Testing for consistency of input output data
@@ -1605,8 +1688,7 @@ void InterpolationTest::testKernelInterpolation2D(){
     }
 }
 
-
-void InterpolationTest::testBicubicDerivatives() {
+BOOST_AUTO_TEST_CASE(testBicubicDerivatives) {
     BOOST_TEST_MESSAGE("Testing bicubic spline derivatives...");
 
     std::vector<Real> x(100), y(100);
@@ -1649,8 +1731,7 @@ void InterpolationTest::testBicubicDerivatives() {
     }
 }
 
-
-void InterpolationTest::testBicubicUpdate() {
+BOOST_AUTO_TEST_CASE(testBicubicUpdate) {
     BOOST_TEST_MESSAGE("Testing that bicubic splines actually update...");
 
     Size N=6;
@@ -1678,27 +1759,7 @@ void InterpolationTest::testBicubicUpdate() {
     }
 }
 
-
-namespace {
-    class GF {
-      public:
-        GF(Real exponent, Real factor)
-        : exponent_(exponent), factor_(factor) {}
-
-        Real operator()(Real h) const {
-            return M_PI + factor_*std::pow(h, exponent_)
-                + std::pow(factor_*h, exponent_ + 1);
-        }
-      private:
-        const Real exponent_, factor_;
-    };
-
-    Real limCos(Real h) {
-        return -std::cos(h);
-    }
-}
-
-void InterpolationTest::testUnknownRichardsonExtrapolation() {
+BOOST_AUTO_TEST_CASE(testUnknownRichardsonExtrapolation) {
     BOOST_TEST_MESSAGE("Testing Richardson extrapolation with "
             "unknown order of convergence...");
 
@@ -1744,14 +1805,7 @@ void InterpolationTest::testUnknownRichardsonExtrapolation() {
                 " with unknown order of convergence");
 }
 
-
-namespace {
-    Real f(Real h) {
-        return std::pow( 1.0 + h, 1/h);
-    }
-}
-
-void InterpolationTest::testRichardsonExtrapolation() {
+BOOST_AUTO_TEST_CASE(testRichardsonExtrapolation) {
     BOOST_TEST_MESSAGE("Testing Richardson extrapolation...");
 
     /* example taken from
@@ -1789,7 +1843,7 @@ void InterpolationTest::testRichardsonExtrapolation() {
     }
 }
 
-void InterpolationTest::testNoArbSabrInterpolation(){
+BOOST_AUTO_TEST_CASE(testNoArbSabrInterpolation, *precondition(if_speed(Fast))){
 
     BOOST_TEST_MESSAGE("Testing no-arbitrage Sabr interpolation...");
 
@@ -1892,7 +1946,7 @@ void InterpolationTest::testNoArbSabrInterpolation(){
     for (Size j=1; j<methods_.size(); ++j) { // skip simplex (gets caught in some cases)
         for (bool i : vegaWeighted) {
             for (bool k_a : isAlphaFixed) {
-                for (Size k_b=0; k_b<1/*LENGTH(isBetaFixed)*/; ++k_b) { // keep beta fixed (all 4 params free is a problem for this kind of test)
+                for (Size k_b=0; k_b<1/*std::size(isBetaFixed)*/; ++k_b) { // keep beta fixed (all 4 params free is a problem for this kind of test)
                     for (bool k_n : isNuFixed) {
                         for (bool k_r : isRhoFixed) {
                             NoArbSabrInterpolation noarbSabrInterpolation(
@@ -1964,8 +2018,7 @@ void InterpolationTest::testNoArbSabrInterpolation(){
 
 }
 
-
-void InterpolationTest::testSabrSingleCases() {
+BOOST_AUTO_TEST_CASE(testSabrSingleCases) {
 
     BOOST_TEST_MESSAGE("Testing Sabr calibration single cases...");
 
@@ -1991,7 +2044,7 @@ void InterpolationTest::testSabrSingleCases() {
 
 }
 
-void InterpolationTest::testTransformations() {
+BOOST_AUTO_TEST_CASE(testTransformations) {
 
     BOOST_TEST_MESSAGE("Testing Sabr and no-arbitrage Sabr transformation functions...");
 
@@ -2065,7 +2118,7 @@ void InterpolationTest::testTransformations() {
     }
 }
 
-void InterpolationTest::testFlochKennedySabrIsSmoothAroundATM() {
+BOOST_AUTO_TEST_CASE(testFlochKennedySabrIsSmoothAroundATM) {
     BOOST_TEST_MESSAGE("Testing that Andersen SABR formula is smooth "
                        "close to the ATM level...");
 
@@ -2109,7 +2162,7 @@ void InterpolationTest::testFlochKennedySabrIsSmoothAroundATM() {
     }
 }
 
-void InterpolationTest::testLeFlochKennedySabrExample() {
+BOOST_AUTO_TEST_CASE(testLeFlochKennedySabrExample) {
     BOOST_TEST_MESSAGE("Testing Le Floc'h Kennedy SABR Example...");
 
     /*
@@ -2128,7 +2181,7 @@ void InterpolationTest::testLeFlochKennedySabrExample() {
 
     const Real expected[] = {0.408702473958, 0.428489933046, 0.585701651161};
 
-    for (Size i=0; i < LENGTH(strikes); ++i) {
+    for (Size i=0; i < std::size(strikes); ++i) {
         const Real strike = strikes[i];
         const Real vol =
             sabrFlochKennedyVolatility(strike, f0, t, alpha, beta, nu, rho);
@@ -2145,13 +2198,7 @@ void InterpolationTest::testLeFlochKennedySabrExample() {
     }
 }
 
-namespace {
-    Real lagrangeTestFct(Real x) {
-        return std::fabs(x) + 0.5*x - x*x;
-    }
-}
-
-void InterpolationTest::testLagrangeInterpolation() {
+BOOST_AUTO_TEST_CASE(testLagrangeInterpolation) {
 
     BOOST_TEST_MESSAGE("Testing Lagrange interpolation...");
 
@@ -2206,7 +2253,7 @@ void InterpolationTest::testLagrangeInterpolation() {
     }
 }
 
-void InterpolationTest::testLagrangeInterpolationAtSupportPoint() {
+BOOST_AUTO_TEST_CASE(testLagrangeInterpolationAtSupportPoint) {
     BOOST_TEST_MESSAGE(
         "Testing Lagrange interpolation at supporting points...");
 
@@ -2237,7 +2284,7 @@ void InterpolationTest::testLagrangeInterpolationAtSupportPoint() {
     }
 }
 
-void InterpolationTest::testLagrangeInterpolationDerivative() {
+BOOST_AUTO_TEST_CASE(testLagrangeInterpolationDerivative) {
     BOOST_TEST_MESSAGE(
         "Testing Lagrange interpolation derivatives...");
 
@@ -2267,7 +2314,7 @@ void InterpolationTest::testLagrangeInterpolationDerivative() {
     }
 }
 
-void InterpolationTest::testLagrangeInterpolationOnChebyshevPoints() {
+BOOST_AUTO_TEST_CASE(testLagrangeInterpolationOnChebyshevPoints) {
     BOOST_TEST_MESSAGE(
         "Testing Lagrange interpolation on Chebyshev nodes...");
 
@@ -2319,7 +2366,7 @@ void InterpolationTest::testLagrangeInterpolationOnChebyshevPoints() {
     }
 }
 
-void InterpolationTest::testBSplines() {
+BOOST_AUTO_TEST_CASE(testBSplines) {
     BOOST_TEST_MESSAGE("Testing B-Splines...");
 
     // reference values have been generate with the R package splines2
@@ -2330,24 +2377,21 @@ void InterpolationTest::testBSplines() {
     const Natural p = 2;
     const BSpline bspline(p, knots.size()-p-2, knots);
 
-    std::vector<ext::tuple<Natural, Real, Real>> referenceValues = {
-        ext::make_tuple(0, -0.95, 9.5238095238e-04),
-        ext::make_tuple(0, -0.01, 0.37337142857),
-        ext::make_tuple(0, 0.49, 0.84575238095),
-        ext::make_tuple(0, 1.21, 0.0),
-        ext::make_tuple(1, 1.49, 0.562987654321),
-        ext::make_tuple(1, 1.59, 0.490888888889),
-        ext::make_tuple(2, 1.99, 0.62429409171),
-        ext::make_tuple(3, 1.19, 0.0),
-        ext::make_tuple(3, 1.99, 0.12382936508),
-        ext::make_tuple(3, 3.59, 0.765914285714)
+    std::vector<std::tuple<Natural, Real, Real>> referenceValues = {
+        {0, -0.95, 9.5238095238e-04},
+        {0, -0.01, 0.37337142857},
+        {0, 0.49, 0.84575238095},
+        {0, 1.21, 0.0},
+        {1, 1.49, 0.562987654321},
+        {1, 1.59, 0.490888888889},
+        {2, 1.99, 0.62429409171},
+        {3, 1.19, 0.0},
+        {3, 1.99, 0.12382936508},
+        {3, 3.59, 0.765914285714}
     };
 
     const Real tol = 1e-10;
-    for (auto& referenceValue : referenceValues) {
-        const Natural idx = ext::get<0>(referenceValue);
-        const Real x = ext::get<1>(referenceValue);
-        const Real expected = ext::get<2>(referenceValue);
+    for (const auto& [idx, x, expected] : referenceValues) {
 
         const Real calculated = bspline(idx, x);
 
@@ -2364,7 +2408,7 @@ void InterpolationTest::testBSplines() {
     }
 }
 
-void InterpolationTest::testBackwardFlatOnSinglePoint() {
+BOOST_AUTO_TEST_CASE(testBackwardFlatOnSinglePoint) {
     BOOST_TEST_MESSAGE("Testing piecewise constant interpolation on a "
                        "single point...");
     const std::vector<Real> knots(1, 1.0), values(1, 2.5);
@@ -2397,7 +2441,7 @@ void InterpolationTest::testBackwardFlatOnSinglePoint() {
     }
 }
 
-void InterpolationTest::testChebyshevInterpolation() {
+BOOST_AUTO_TEST_CASE(testChebyshevInterpolation) {
     BOOST_TEST_MESSAGE("Testing Chebyshev interpolation...");
 
     const auto fcts =
@@ -2437,7 +2481,7 @@ void InterpolationTest::testChebyshevInterpolation() {
     }
 }
 
-void InterpolationTest::testChebyshevInterpolationOnNodes() {
+BOOST_AUTO_TEST_CASE(testChebyshevInterpolationOnNodes) {
     BOOST_TEST_MESSAGE("Testing Chebyshev interpolation on and around nodes...");
 
     constexpr double tol = 10*QL_EPSILON;
@@ -2492,7 +2536,7 @@ void InterpolationTest::testChebyshevInterpolationOnNodes() {
     }
 }
 
-void InterpolationTest::testChebyshevInterpolationUpdateY() {
+BOOST_AUTO_TEST_CASE(testChebyshevInterpolationUpdateY) {
     BOOST_TEST_MESSAGE("Testing Y update for Chebyshev interpolation...");
 
     Array y({1, 4, 7, 4});
@@ -2520,45 +2564,292 @@ void InterpolationTest::testChebyshevInterpolationUpdateY() {
     }
 }
 
+BOOST_AUTO_TEST_CASE(testLaplaceInterpolation) {
+    BOOST_TEST_MESSAGE("Testing Laplace interpolation...");
 
-test_suite* InterpolationTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("Interpolation tests");
+    Real tol = 1E-12;
+    Real na = Null<Real>();
 
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testSplineOnGenericValues));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testSimmetricEndConditions));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testDerivativeEndConditions));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testNonRestrictiveHymanFilter));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testSplineOnRPN15AValues));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testSplineOnGaussianValues));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testSplineErrorOnGaussianValues));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testMultiSpline));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testAsFunctor));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testFritschButland));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testBackwardFlat));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testForwardFlat));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testSabrInterpolation));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testFlochKennedySabrIsSmoothAroundATM));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testLeFlochKennedySabrExample));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testKernelInterpolation));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testKernelInterpolation2D));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testBicubicDerivatives));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testBicubicUpdate));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testUnknownRichardsonExtrapolation));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testRichardsonExtrapolation));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testSabrSingleCases));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testTransformations));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testLagrangeInterpolation));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testLagrangeInterpolationAtSupportPoint));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testLagrangeInterpolationDerivative));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testLagrangeInterpolationOnChebyshevPoints));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testBSplines));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testBackwardFlatOnSinglePoint));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testChebyshevInterpolation));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testChebyshevInterpolationOnNodes));
-    suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testChebyshevInterpolationUpdateY));
-    if (speed <= Fast) {
-        suite->add(QUANTLIB_TEST_CASE(&InterpolationTest::testNoArbSabrInterpolation));
+    // full matrix
+
+    Matrix m1 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m1);
+
+    BOOST_CHECK_CLOSE(m1(0, 0), 1.0, tol);
+    BOOST_CHECK_CLOSE(m1(0, 2), 4.0, tol);
+    BOOST_CHECK_CLOSE(m1(2, 0), 5.0, tol);
+    BOOST_CHECK_CLOSE(m1(2, 1), 3.0, tol);
+
+    // inner point
+
+    Matrix m2 = {
+        {1.0, 2.0, 4.0},
+        {6.0, na, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m2);
+
+    BOOST_CHECK_CLOSE(m2(1, 1), 4.5, tol);
+    BOOST_CHECK_CLOSE(m2(2, 1), 3.0, tol);
+
+    // boundaries
+
+    Matrix m3 = {
+        {1.0, na, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m3);
+
+    BOOST_CHECK_CLOSE(m3(0, 1), 2.5, tol);
+
+    Matrix m4 = {
+        {1.0, 2.0, 4.0},
+        {na, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m4);
+
+    BOOST_CHECK_CLOSE(m4(1, 0), 3.0, tol);
+
+    Matrix m5 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, na, 2.0},
+    };
+
+    laplaceInterpolation(m5);
+
+    BOOST_CHECK_CLOSE(m5(2, 1), 3.5, tol);
+
+    Matrix m6 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, na},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m6);
+
+    BOOST_CHECK_CLOSE(m6(1, 2), 3.0, tol);
+
+    // corners
+
+    Matrix m7 = {
+        {na, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m7);
+
+    BOOST_CHECK_CLOSE(m7(0, 0), 4.0, tol);
+
+    Matrix m8 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {na, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m8);
+
+    BOOST_CHECK_CLOSE(m8(2, 0), 4.5, tol);
+
+    Matrix m9 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, na},
+    };
+
+    laplaceInterpolation(m9);
+
+    BOOST_CHECK_CLOSE(m9(2, 2), 5.0, tol);
+
+    Matrix m10 = {
+        {1.0, 2.0, na},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m10);
+
+    BOOST_CHECK_CLOSE(m10(0, 2), 4.5, tol);
+
+    // one dim (col vector)
+
+    Matrix m20 = { {na}, {na}, {3.0}, {5.0}, {7.0}, {na} };
+
+    laplaceInterpolation(m20);
+
+    BOOST_CHECK_CLOSE(m20(0, 0), 3.0, tol);
+    BOOST_CHECK_CLOSE(m20(1, 0), 3.0, tol);
+    BOOST_CHECK_CLOSE(m20(5, 0), 7.0, tol);
+
+    // one dim (row vector)
+
+    Matrix m21 = {{na, na, 3.0, 5.0, 7.0, na}};
+
+    laplaceInterpolation(m21);
+
+    BOOST_CHECK_CLOSE(m21(0, 0), 3.0, tol);
+    BOOST_CHECK_CLOSE(m21(0, 1), 3.0, tol);
+    BOOST_CHECK_CLOSE(m21(0, 5), 7.0, tol);
+
+    // non equidistant grid, inner point
+
+    Matrix m30 = {
+        {1.0, 2.0, 4.0},
+        {6.0, na, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m30, {1.0, 2.0, 4.0}, {1.0, 2.0, 4.0});
+
+    BOOST_CHECK_CLOSE(m30(1, 1), 26.0 / 6.0, tol);
+
+    // non equidistant grid, boundaries
+
+    Matrix m31 = {
+        {1.0, na, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m31, {1.0, 2.0, 4.0}, {1.0, 2.0, 4.0});
+
+    BOOST_CHECK_CLOSE(m31(0, 1), 6.0 / 3.0, tol);
+
+    Matrix m32 = {
+        {1.0, 2.0, 4.0},
+        {na, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m32, {1.0, 2.0, 4.0}, {1.0, 2.0, 4.0});
+
+    BOOST_CHECK_CLOSE(m32(1, 0), 7.0 / 3.0, tol);
+
+    Matrix m33 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, na, 2.0},
+    };
+
+    laplaceInterpolation(m33, {1.0, 2.0, 4.0}, {1.0, 2.0, 4.0});
+
+    BOOST_CHECK_CLOSE(m33(2, 1), 12.0 / 3.0, tol);
+
+    Matrix m34 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, na},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m34, {1.0, 2.0, 4.0}, {1.0, 2.0, 4.0});
+
+    BOOST_CHECK_CLOSE(m34(1, 2), 10.0 / 3.0, tol);
+
+    // non equidistant grid, corners
+
+    Matrix m35 = {
+        {na, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m35, {1.0, 2.0, 4.0}, {1.0, 3.0, 7.0});
+
+    BOOST_CHECK_CLOSE(m35(0, 0), 10.0 / 3.0, tol);
+
+    Matrix m36 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {na, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m36, {1.0, 2.0, 4.0}, {1.0, 3.0, 7.0});
+
+    BOOST_CHECK_CLOSE(m36(2, 0), 18.0 / 5.0, tol);
+
+    Matrix m37 = {
+        {1.0, 2.0, 4.0},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, na},
+    };
+
+    laplaceInterpolation(m37, {1.0, 2.0, 4.0}, {1.0, 3.0, 7.0});
+
+    BOOST_CHECK_CLOSE(m37(2, 2), 13.0 / 3.0, tol);
+
+    Matrix m38 = {
+        {1.0, 2.0, na},
+        {6.0, 6.5, 7.0},
+        {5.0, 3.0, 2.0},
+    };
+
+    laplaceInterpolation(m38, {1.0, 2.0, 4.0}, {1.0, 2.0, 3.0});
+
+    BOOST_CHECK_CLOSE(m38(0, 2), 16.0 / 3.0, tol);
+
+    // single point with given value
+
+    Matrix m50 = {
+        {1.0},
+    };
+
+    laplaceInterpolation(m50);
+
+    BOOST_CHECK_CLOSE(m50(0, 0), 1.0, tol);
+
+    // single point with missing value
+
+    Matrix m51 = {
+        {Null<Real>()},
+    };
+
+    laplaceInterpolation(m51);
+
+    BOOST_CHECK_CLOSE(m51(0, 0), 0.0, tol);
+
+    // no point
+
+    LaplaceInterpolation l0([](const std::vector<Size>&) { return Null<Real>(); }, {});
+    BOOST_CHECK_CLOSE(l0({}), 0.0, tol);
+
+    // single test cases from actual issues observed in the field
+
+    std::vector<Real> tx = {0.0849315, 0.257534, 0.509589, 1.00548, 2.00274, 3.00274, 4.00274,
+                            5.00548,   7.00822,  10.0082,  15.011,  20.0137, 30.0219, 70.0493};
+    std::vector<Real> ty = {0.25, 1, 2, 3, 4, 5, 7, 10, 15, 20, 30, 100};
+    Matrix m52 = {{na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na},
+                  {na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na},
+                  {na, na, na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na},
+                  {na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na},
+                  {na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na},
+                  {na, na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na},
+                  {na, na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na},
+                  {na, na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na},
+                  {na, na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na, na},
+                  {na, na, na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na, na},
+                  {na, na, na, na, na, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, na, na},
+                  {na, na, na, na, na, na, na, na, na, na, na, na, na, na}};
+
+    // we need to allow for more iterations to achieve the desired accuracy
+    laplaceInterpolation(m52, tx, ty, 1E-6, 100);
+
+    for (auto const& v : m52) {
+        BOOST_CHECK_CLOSE(v, 1.0, 0.1);
     }
 
-    return suite;
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

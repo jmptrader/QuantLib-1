@@ -10,14 +10,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "creditdefaultswap.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/cashflows/iborcoupon.hpp>
 #include <ql/instruments/creditdefaultswap.hpp>
@@ -49,7 +49,11 @@ using namespace QuantLib;
 using namespace boost::unit_test_framework;
 using std::map;
 
-void CreditDefaultSwapTest::testCachedValue() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(CreditDefaultSwapTests)
+
+BOOST_AUTO_TEST_CASE(testCachedValue) {
 
     BOOST_TEST_MESSAGE("Testing credit-default swap against cached values...");
 
@@ -160,8 +164,7 @@ void CreditDefaultSwapTest::testCachedValue() {
             << "    expected fair rate:   " << fairRate);
 }
 
-
-void CreditDefaultSwapTest::testCachedMarketValue() {
+BOOST_AUTO_TEST_CASE(testCachedMarketValue) {
 
     BOOST_TEST_MESSAGE(
         "Testing credit-default swap against cached market values...");
@@ -306,8 +309,7 @@ void CreditDefaultSwapTest::testCachedMarketValue() {
             << "    Given fair rate:     " << fairRate);
 }
 
-
-void CreditDefaultSwapTest::testImpliedHazardRate() {
+BOOST_AUTO_TEST_CASE(testImpliedHazardRate) {
 
     BOOST_TEST_MESSAGE("Testing implied hazard-rate for credit-default swaps...");
 
@@ -411,8 +413,7 @@ void CreditDefaultSwapTest::testImpliedHazardRate() {
     }
 }
 
-
-void CreditDefaultSwapTest::testFairSpread() {
+BOOST_AUTO_TEST_CASE(testFairSpread) {
 
     BOOST_TEST_MESSAGE(
         "Testing fair-spread calculation for credit-default swaps...");
@@ -475,7 +476,7 @@ void CreditDefaultSwapTest::testFairSpread() {
             << "    calculated NPV:    " << fairNPV);
 }
 
-void CreditDefaultSwapTest::testFairUpfront() {
+BOOST_AUTO_TEST_CASE(testFairUpfront) {
 
     BOOST_TEST_MESSAGE(
         "Testing fair-upfront calculation for credit-default swaps...");
@@ -562,7 +563,7 @@ void CreditDefaultSwapTest::testFairUpfront() {
             << "    calculated NPV:     " << fairNPV);
 }
 
-void CreditDefaultSwapTest::testIsdaEngine() {
+BOOST_AUTO_TEST_CASE(testIsdaEngine) {
 
     BOOST_TEST_MESSAGE(
         "Testing ISDA engine calculations for credit-default swaps...");
@@ -584,6 +585,7 @@ void CreditDefaultSwapTest::testIsdaEngine() {
                            0.014,
                            0.015488};
 
+    isdaRateHelpers.reserve(sizeof(dep_tenors) / sizeof(int));
     for(size_t i = 0; i < sizeof(dep_tenors) / sizeof(int); i++) {
         isdaRateHelpers.push_back(ext::make_shared<DepositRateHelper>(
                                      dep_quotes[i], dep_tenors[i] * Months, 2,
@@ -718,7 +720,7 @@ void CreditDefaultSwapTest::testIsdaEngine() {
     }
 }
 
-void CreditDefaultSwapTest::testAccrualRebateAmounts() {
+BOOST_AUTO_TEST_CASE(testAccrualRebateAmounts) {
 
     BOOST_TEST_MESSAGE("Testing accrual rebate amounts on credit default swaps...");
 
@@ -753,8 +755,7 @@ void CreditDefaultSwapTest::testAccrualRebateAmounts() {
     }
 }
 
-void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleQuote ()
-{
+BOOST_AUTO_TEST_CASE(testIsdaCalculatorReconcileSingleQuote) {
     BOOST_TEST_MESSAGE(
         "Testing ISDA engine calculations for a single credit-default swap record (reconciliation)...");
 
@@ -767,6 +768,7 @@ void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleQuote ()
     int dep_tenors[] = {1, 3, 6, 12};
     double dep_quotes[] = {-0.0056,-0.005440,-0.005190,-0.004930};
 
+    isdaRateHelpers.reserve(sizeof(dep_tenors) / sizeof(int));
     for(size_t i = 0; i < sizeof(dep_tenors) / sizeof(int); i++) {
         isdaRateHelpers.push_back(ext::make_shared<DepositRateHelper>(
                                      dep_quotes[i], dep_tenors[i] * Months, 2,
@@ -857,8 +859,7 @@ void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleQuote ()
 
 }
 
-void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleWithIssueDateInThePast ()
-{
+BOOST_AUTO_TEST_CASE(testIsdaCalculatorReconcileSingleWithIssueDateInThePast) {
     BOOST_TEST_MESSAGE(
         "Testing ISDA engine calculations for a single credit-default swap with issue date in the past...");
 
@@ -875,6 +876,7 @@ void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleWithIssueDateInTheP
     int dep_tenors[] = {1, 3, 6, 12};
     double dep_quotes[] = {-0.0056,-0.005440,-0.005190,-0.004930};
 
+    isdaRateHelpers.reserve(sizeof(dep_tenors) / sizeof(int));
     for(size_t i = 0; i < sizeof(dep_tenors) / sizeof(int); i++) {
         isdaRateHelpers.push_back(ext::make_shared<DepositRateHelper>(
                                      dep_quotes[i], dep_tenors[i] * Months, 2,
@@ -956,16 +958,6 @@ void CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleWithIssueDateInTheP
     QL_CHECK_CLOSE(calculated_accrual, expected_accrual, tolerance);
 }
 
-test_suite* CreditDefaultSwapTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Credit-default swap tests");
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testCachedValue));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testCachedMarketValue));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testImpliedHazardRate));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testFairSpread));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testFairUpfront));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testIsdaEngine));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testAccrualRebateAmounts));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleQuote));
-    suite->add(QUANTLIB_TEST_CASE(&CreditDefaultSwapTest::testIsdaCalculatorReconcileSingleWithIssueDateInThePast));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

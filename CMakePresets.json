@@ -174,51 +174,49 @@
     {
       "name": "linux-clang-ninja-debug",
       "inherits": [
-        "linux-clang-debug",
-        "ninja"
+        "ninja",
+        "linux-clang-debug"
       ]
     },
     {
       "name": "linux-clang-ninja-release",
       "inherits": [
-        "linux-clang-release",
-        "ninja"
+        "ninja",
+        "linux-clang-release"
       ]
     },
     {
       "name": "linux-clang-ninja-relwithdebinfo",
       "inherits": [
-        "linux-clang-relwithdebinfo",
-        "ninja"
+        "ninja",
+        "linux-clang-relwithdebinfo"
       ]
     },
     {
       "name": "linux-gcc-ninja-debug",
       "inherits": [
-        "linux-gcc-debug",
-        "ninja"
+        "ninja",
+        "linux-gcc-debug"
       ]
     },
     {
       "name": "linux-gcc-ninja-release",
       "inherits": [
-        "linux-gcc-release",
-        "ninja"
+        "ninja",
+        "linux-gcc-release"
       ]
     },
     {
       "name": "linux-gcc-ninja-relwithdebinfo",
       "inherits": [
-        "linux-gcc-relwithdebinfo",
-        "ninja"
+        "ninja",
+        "linux-gcc-relwithdebinfo"
       ]
     },
     {
       "name": "linux-gcc-debug-with-clang-tidy",
       "inherits": [
-        "linux-gcc-base",
-        "make",
-        "_debug"
+        "linux-gcc-debug"
       ],
       "cacheVariables": {
         "QL_CLANG_TIDY_OPTIONS": "-warnings-as-errors=*",
@@ -276,14 +274,12 @@
     {
       "name": "linux-ci-build-with-clang-tidy",
       "inherits": [
-        "linux-gcc-base",
-        "make",
-        "_debug"
+        "linux-gcc-debug"
       ],
       "cacheVariables": {
         "BOOST_ROOT": "/usr",
         "CMAKE_UNITY_BUILD": "ON",
-        "QL_CLANG_TIDY": "clang-tidy-15",
+        "QL_CLANG_TIDY": "clang-tidy-19",
         "QL_CLANG_TIDY_OPTIONS": "-quiet;-fix",
         "QL_USE_CLANG_TIDY": "ON",
         "QL_USE_STD_CLASSES": "ON"
@@ -292,14 +288,11 @@
     {
       "name": "linux-ci-build-with-nonstandard-options",
       "inherits": [
-        "linux-gcc-base",
-        "ninja",
-        "_release"
+        "linux-gcc-ninja-release"
       ],
       "cacheVariables": {
         "BOOST_ROOT": "/usr",
         "BUILD_SHARED_LIBS": false,
-        "CMAKE_CXX_STANDARD": "17",
         "CMAKE_CXX_COMPILER_LAUNCHER": "ccache",
         "QL_ENABLE_SESSIONS": "ON",
         "QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN": "ON",
@@ -309,22 +302,17 @@
         "QL_NULL_AS_FUNCTIONS": "ON",
         "QL_USE_INDEXED_COUPON": "ON",
         "QL_USE_STD_SHARED_PTR": "ON",
-        "QL_USE_STD_ANY": "ON",
-        "QL_USE_STD_OPTIONAL": "ON",
-        "QL_USE_STD_FUNCTION": "OFF",
-        "QL_USE_STD_TUPLE": "OFF",
+        "QL_USE_STD_ANY": "OFF",
+        "QL_USE_STD_OPTIONAL": "OFF",
         "QL_COMPILE_WARNING_AS_ERROR": "ON"
       }
     },
     {
       "name": "windows-ci-build-with-nonstandard-options",
       "inherits": [
-        "windows-msvc-base",
-        "ninja",
-        "_release"
+        "windows-msvc-release"
       ],
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "17",
         "CMAKE_UNITY_BUILD": "ON",
         "QL_ENABLE_SESSIONS": "ON",
         "QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN": "ON",
@@ -334,10 +322,8 @@
         "QL_NULL_AS_FUNCTIONS": "ON",
         "QL_USE_INDEXED_COUPON": "ON",
         "QL_USE_STD_SHARED_PTR": "ON",
-        "QL_USE_STD_ANY": "ON",
-        "QL_USE_STD_OPTIONAL": "ON",
-        "QL_USE_STD_FUNCTION": "OFF",
-        "QL_USE_STD_TUPLE": "OFF",
+        "QL_USE_STD_ANY": "OFF",
+        "QL_USE_STD_OPTIONAL": "OFF",
         "QL_COMPILE_WARNING_AS_ERROR": "ON",
         "CMAKE_CXX_COMPILER_LAUNCHER": "sccache"
       }

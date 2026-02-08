@@ -10,14 +10,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "cdsoption.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/experimental/credit/cdsoption.hpp>
 #include <ql/experimental/credit/blackcdsoptionengine.hpp>
@@ -34,7 +34,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void CdsOptionTest::testCached() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(CdsOptionTests)
+
+BOOST_AUTO_TEST_CASE(testCached) {
 
     BOOST_TEST_MESSAGE("Testing CDS-option value against cached values...");
 
@@ -112,9 +116,6 @@ void CdsOptionTest::testCached() {
                     << "    expected:   " << cachedValue);
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* CdsOptionTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("range-accrual-swap tests");
-    suite->add(QUANTLIB_TEST_CASE(&CdsOptionTest::testCached));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

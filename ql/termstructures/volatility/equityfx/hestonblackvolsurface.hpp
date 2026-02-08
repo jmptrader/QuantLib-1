@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -35,9 +35,10 @@ namespace QuantLib {
       public:
         explicit HestonBlackVolSurface(
             const Handle<HestonModel>& hestonModel,
-            AnalyticHestonEngine::ComplexLogFormula cpxLogFormula = AnalyticHestonEngine::Gatheral,
+            AnalyticHestonEngine::ComplexLogFormula cpxLogFormula =
+                AnalyticHestonEngine::AngledContour,
             AnalyticHestonEngine::Integration integration =
-                AnalyticHestonEngine::Integration::gaussLaguerre(164));
+                AnalyticHestonEngine::Integration::gaussLaguerre(160));
 
         DayCounter dayCounter() const override;
         Date maxDate() const override;

@@ -3,6 +3,7 @@
 /*
  Copyright (C) 2004 FIMAT Group
  Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 StatPro Italia srl
+ Copyright (C) 2023 Skandinaviska Enskilda Banken AB (publ)
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -11,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -437,6 +438,25 @@ namespace QuantLib {
                 // adjusted holiday
                 || (d == 9 && m == October)
                 )
+                return false;
+        }
+
+        if (y == 2024) {
+            if ( // adjusted holiday
+                (d == 8 && m == February)
+                // Lunar New Year
+                || (d >= 9 && d <= 12 && m == February)
+                // adjusted holiday
+                || (d >= 13 && d <= 14 && m == February)
+                // Children's Day
+                || (d == 4 && m == April)
+                // Tomb-sweeping Day
+                || (d == 5 && m == April)
+                // Dragon Boat Festival
+                || (d == 10 && m == June)
+                // Mid-autumn/Moon Festival
+                || (d == 17 && m == September)
+            )
                 return false;
         }
 

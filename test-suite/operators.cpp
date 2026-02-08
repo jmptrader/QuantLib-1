@@ -11,20 +11,18 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "operators.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/methods/finitedifferences/dzero.hpp>
 #include <ql/methods/finitedifferences/dplusdminus.hpp>
-#include <ql/methods/finitedifferences/bsmoperator.hpp>
-#include <ql/methods/finitedifferences/bsmtermoperator.hpp>
 #include <ql/time/daycounters/actual360.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/utilities/dataformatters.hpp>
@@ -32,8 +30,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
 
-void OperatorTest::testTridiagonal() {
+BOOST_AUTO_TEST_SUITE(OperatorTests)
+
+BOOST_AUTO_TEST_CASE(testTridiagonal) {
 
     BOOST_TEST_MESSAGE("Testing tridiagonal operator...");
 
@@ -115,7 +116,7 @@ void OperatorTest::testTridiagonal() {
                    "\n                  tolerance: " << tolerance);
 }
 
-void OperatorTest::testConsistency() {
+BOOST_AUTO_TEST_CASE(testConsistency) {
 
     BOOST_TEST_MESSAGE("Testing differential operators...");
 
@@ -140,8 +141,10 @@ void OperatorTest::testConsistency() {
         yd[i] = normal.derivative(x[i]);
 
     // define the differential operators
+    QL_DEPRECATED_DISABLE_WARNING
     DZero D(N,h);
     DPlusDMinus D2(N,h);
+    QL_DEPRECATED_ENABLE_WARNING
 
     // check that the derivative of cum is Gaussian
     temp = D.applyTo(yi);
@@ -162,71 +165,6 @@ void OperatorTest::testConsistency() {
     }
 }
 
-void OperatorTest::testBSMOperatorConsistency() {
-    BOOST_TEST_MESSAGE("Testing consistency of BSM operators...");
+BOOST_AUTO_TEST_SUITE_END()
 
-    Array grid(10);
-    Real price = 20.0;
-    Real factor = 1.1;
-    Size i;
-    for (i = 0; i < grid.size(); i++) {
-        grid[i] = price;
-        price *= factor;
-    }
-    Real dx = std::log(factor);
-    Rate r = 0.05;
-    Rate q = 0.01;
-    Volatility sigma = 0.5;
-
-    BSMOperator ref(grid.size(), dx, r, q, sigma);
-
-    DayCounter dc = Actual360();
-    Date today = Date::todaysDate();
-    Date exercise = today + 2*Years;
-    Time residualTime = dc.yearFraction(today,exercise);
-
-    ext::shared_ptr<SimpleQuote> spot(new SimpleQuote(0.0));
-    ext::shared_ptr<YieldTermStructure> qTS = flatRate(today, q, dc);
-    ext::shared_ptr<YieldTermStructure> rTS = flatRate(today, r, dc);
-    ext::shared_ptr<BlackVolTermStructure> volTS = flatVol(today, sigma, dc);
-    ext::shared_ptr<GeneralizedBlackScholesProcess> stochProcess(
-        new GeneralizedBlackScholesProcess(
-                                       Handle<Quote>(spot),
-                                       Handle<YieldTermStructure>(qTS),
-                                       Handle<YieldTermStructure>(rTS),
-                                       Handle<BlackVolTermStructure>(volTS)));
-    PdeOperator<PdeBSM> op2(grid, stochProcess, residualTime);
-
-    Real tolerance = 1.0e-6;
-
-    Array lderror = ref.lowerDiagonal() - op2.lowerDiagonal();
-    Array derror = ref.diagonal() - op2.diagonal();
-    Array uderror = ref.upperDiagonal() - op2.upperDiagonal();
-
-    for (i=2; i<grid.size()-2; i++) {
-        if (std::fabs(lderror[i]) > tolerance ||
-            std::fabs(derror[i]) > tolerance ||
-            std::fabs(uderror[i]) > tolerance) {
-            BOOST_FAIL("inconsistency between BSM operators:\n"
-                       << io::ordinal(i) << " row:\n"
-                       << "expected:   "
-                       << ref.lowerDiagonal()[i] << ", "
-                       << ref.diagonal()[i] << ", "
-                       << ref.upperDiagonal()[i] << "\n"
-                       << "calculated: "
-                       << op2.lowerDiagonal()[i] << ", "
-                       << op2.diagonal()[i] << ", "
-                       << op2.upperDiagonal()[i]);
-        }
-    }
-}
-
-
-test_suite* OperatorTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Operator tests");
-    suite->add(QUANTLIB_TEST_CASE(&OperatorTest::testTridiagonal));
-    suite->add(QUANTLIB_TEST_CASE(&OperatorTest::testConsistency));
-    suite->add(QUANTLIB_TEST_CASE(&OperatorTest::testBSMOperatorConsistency));
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

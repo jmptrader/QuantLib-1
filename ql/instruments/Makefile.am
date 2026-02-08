@@ -25,14 +25,11 @@ this_include_HEADERS = \
     cpicapfloor.hpp \
     cpiswap.hpp \
     creditdefaultswap.hpp \
-    dividendbarrieroption.hpp \
     dividendschedule.hpp \
-    dividendvanillaoption.hpp \
     doublebarrieroption.hpp \
     doublebarriertype.hpp \
     equitytotalreturnswap.hpp \
     europeanoption.hpp \
-    fixedratebondforward.hpp \
     fixedvsfloatingswap.hpp \
     floatfloatswap.hpp \
     floatfloatswaption.hpp \
@@ -40,6 +37,7 @@ this_include_HEADERS = \
     forwardrateagreement.hpp \
     forwardvanillaoption.hpp \
     futures.hpp \
+    holderextensibleoption.hpp \
     impliedvolatility.hpp \
     inflationcapfloor.hpp \
     lookbackoption.hpp \
@@ -57,21 +55,27 @@ this_include_HEADERS = \
     oneassetoption.hpp \
     overnightindexedswap.hpp \
     overnightindexfuture.hpp \
+    partialtimebarrieroption.hpp \
     payoffs.hpp \
+    perpetualfutures.hpp \
     quantobarrieroption.hpp \
     quantoforwardvanillaoption.hpp \
     quantovanillaoption.hpp \
     simplechooseroption.hpp \
     simplifynotificationgraph.hpp \
+    softbarrieroption.hpp \
     stickyratchet.hpp \
     stock.hpp \
     swap.hpp \
     swaption.hpp \
+    twoassetbarrieroption.hpp \
+    twoassetcorrelationoption.hpp \
     vanillaoption.hpp \
     vanillastorageoption.hpp \
     vanillaswap.hpp \
     vanillaswingoption.hpp \
     varianceswap.hpp \
+    writerextensibleoption.hpp \
     yearonyearinflationswap.hpp \
     zerocouponinflationswap.hpp \
     zerocouponswap.hpp
@@ -95,8 +99,6 @@ cpp_files = \
     cpicapfloor.cpp \
     cpiswap.cpp \
     creditdefaultswap.cpp \
-    dividendbarrieroption.cpp \
-    dividendvanillaoption.cpp \
     doublebarrieroption.cpp \
     doublebarriertype.cpp \
     equitytotalreturnswap.cpp \
@@ -108,6 +110,7 @@ cpp_files = \
     forwardrateagreement.cpp \
     forwardvanillaoption.cpp \
     futures.cpp \
+    holderextensibleoption.cpp \
     impliedvolatility.cpp \
     inflationcapfloor.cpp \
     lookbackoption.cpp \
@@ -125,20 +128,26 @@ cpp_files = \
     oneassetoption.cpp \
     overnightindexedswap.cpp \
     overnightindexfuture.cpp \
+    partialtimebarrieroption.cpp \
     payoffs.cpp \
+    perpetualfutures.cpp \
     quantobarrieroption.cpp \
     quantoforwardvanillaoption.cpp \
     quantovanillaoption.cpp \
     simplechooseroption.cpp \
     simplifynotificationgraph.cpp \
+    softbarrieroption.cpp \
     stickyratchet.cpp \
     stock.cpp \
     swap.cpp \
     swaption.cpp \
+    twoassetbarrieroption.cpp \
+    twoassetcorrelationoption.cpp \
     vanillaoption.cpp \
     vanillaswap.cpp \
     vanillaswingoption.cpp \
     varianceswap.cpp \
+    writerextensibleoption.cpp \
     yearonyearinflationswap.cpp \
     zerocouponinflationswap.cpp \
     zerocouponswap.cpp

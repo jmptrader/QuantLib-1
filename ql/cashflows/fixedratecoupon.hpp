@@ -15,7 +15,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -89,7 +89,7 @@ namespace QuantLib {
     //! helper class building a sequence of fixed rate coupons
     class FixedRateLeg {
       public:
-        FixedRateLeg(const Schedule& schedule);
+        FixedRateLeg(Schedule schedule);
         FixedRateLeg& withNotionals(Real);
         FixedRateLeg& withNotionals(const std::vector<Real>&);
         FixedRateLeg& withCouponRates(Rate,
@@ -106,7 +106,7 @@ namespace QuantLib {
         FixedRateLeg& withFirstPeriodDayCounter(const DayCounter&);
         FixedRateLeg& withLastPeriodDayCounter(const DayCounter&);
         FixedRateLeg& withPaymentCalendar(const Calendar&);
-        FixedRateLeg& withPaymentLag(Natural lag);
+        FixedRateLeg& withPaymentLag(Integer lag);
         FixedRateLeg& withExCouponPeriod(const Period&,
                                          const Calendar&,
                                          BusinessDayConvention,
@@ -119,7 +119,7 @@ namespace QuantLib {
         DayCounter firstPeriodDC_ , lastPeriodDC_;
         Calendar paymentCalendar_;
         BusinessDayConvention paymentAdjustment_ = Following;
-        Natural paymentLag_ = 0;
+        Integer paymentLag_ = 0;
         Period exCouponPeriod_;
         Calendar exCouponCalendar_;
         BusinessDayConvention exCouponAdjustment_ = Following;

@@ -10,14 +10,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "noarbsabr.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/termstructures/volatility/sabrsmilesection.hpp>
 #include <ql/experimental/volatility/noarbsabrsmilesection.hpp>
@@ -25,7 +25,10 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-namespace {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(NoArbSabrTests)
+
 void checkD0(const Real sigmaI, const Real beta, const Real rho, const Real nu,
              const Real tau, const unsigned int absorptions) {
 
@@ -41,9 +44,9 @@ void checkD0(const Real sigmaI, const Real beta, const Real rho, const Real nu,
                     << d() * QuantLib::detail::NoArbSabrModel::nsim
                     << " while the reference value is " << absorptions);
 }
-}
 
-void NoArbSabrTest::testAbsorptionMatrix() {
+
+BOOST_AUTO_TEST_CASE(testAbsorptionMatrix) {
 
     BOOST_TEST_MESSAGE("Testing no-arbitrage Sabr absorption matrix...");
 
@@ -69,7 +72,7 @@ void NoArbSabrTest::testAbsorptionMatrix() {
 
 }
 
-void NoArbSabrTest::testConsistencyWithHagan() {
+BOOST_AUTO_TEST_CASE(testConsistencyWithHagan) {
 
     BOOST_TEST_MESSAGE("Testing consistency of noarb-sabr with Hagan et al (2002)");
 
@@ -117,10 +120,6 @@ void NoArbSabrTest::testConsistencyWithHagan() {
 
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* NoArbSabrTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("NoArbSabrModel tests");
-    suite->add(QUANTLIB_TEST_CASE(&NoArbSabrTest::testAbsorptionMatrix));
-    suite->add(QUANTLIB_TEST_CASE(&NoArbSabrTest::testConsistencyWithHagan));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

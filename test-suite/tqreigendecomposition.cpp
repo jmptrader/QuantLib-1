@@ -10,21 +10,25 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "tqreigendecomposition.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/math/matrixutilities/tqreigendecomposition.hpp>
 
 using namespace QuantLib;
 using boost::unit_test_framework::test_suite;
 
-void TqrEigenDecompositionTest::testEigenValueDecomposition() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(TqrEigenDecompositionTests)
+
+BOOST_AUTO_TEST_CASE(testEigenValueDecomposition) {
     BOOST_TEST_MESSAGE("Testing TQR eigenvalue decomposition...");
 
     Array diag(5);
@@ -52,7 +56,7 @@ void TqrEigenDecompositionTest::testEigenValueDecomposition() {
     }
 }
 
-void TqrEigenDecompositionTest::testZeroOffDiagEigenValues() {
+BOOST_AUTO_TEST_CASE(testZeroOffDiagEigenValues) {
     BOOST_TEST_MESSAGE("Testing TQR zero-off-diagonal eigenvalues...");
 
     Array diag(5);
@@ -79,7 +83,7 @@ void TqrEigenDecompositionTest::testZeroOffDiagEigenValues() {
     }
 }
 
-void TqrEigenDecompositionTest::testEigenVectorDecomposition() {
+BOOST_AUTO_TEST_CASE(testEigenVectorDecomposition) {
     BOOST_TEST_MESSAGE("Testing TQR eigenvector decomposition...");
 
     Array diag(2,1);
@@ -96,14 +100,6 @@ void TqrEigenDecompositionTest::testEigenVectorDecomposition() {
     }
 }
 
-test_suite* TqrEigenDecompositionTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("TQR eigendecomposition tests");
-    suite->add(QUANTLIB_TEST_CASE(
-                   &TqrEigenDecompositionTest::testEigenValueDecomposition));
-    suite->add(QUANTLIB_TEST_CASE(
-                   &TqrEigenDecompositionTest::testZeroOffDiagEigenValues));
-    suite->add(QUANTLIB_TEST_CASE(
-                   &TqrEigenDecompositionTest::testEigenVectorDecomposition));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

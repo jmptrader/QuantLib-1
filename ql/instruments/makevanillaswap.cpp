@@ -14,7 +14,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -42,11 +42,8 @@ namespace QuantLib {
                                      Rate fixedRate,
                                      const Period& forwardStart)
     : swapTenor_(swapTenor), iborIndex_(index), fixedRate_(fixedRate), forwardStart_(forwardStart),
-      settlementDays_(Null<Natural>()), fixedCalendar_(index->fixingCalendar()),
-      floatCalendar_(index->fixingCalendar()),
-
+      fixedCalendar_(index->fixingCalendar()), floatCalendar_(index->fixingCalendar()),
       floatTenor_(index->tenor()),
-
       floatConvention_(index->businessDayConvention()),
       floatTerminationDateConvention_(index->businessDayConvention()),
 
@@ -153,7 +150,7 @@ namespace QuantLib {
             VanillaSwap temp(type_, 100.00, fixedSchedule,
                              0.0, // fixed rate
                              fixedDayCount, floatSchedule, iborIndex_, floatSpread_, floatDayCount_,
-                             ext::nullopt, useIndexedCoupons_);
+                             paymentConvention_, useIndexedCoupons_);
             if (engine_ == nullptr) {
                 Handle<YieldTermStructure> disc =
                                         iborIndex_->forwardingTermStructure();
@@ -172,7 +169,7 @@ namespace QuantLib {
 
         ext::shared_ptr<VanillaSwap> swap(new VanillaSwap(
             type_, nominal_, fixedSchedule, usedFixedRate, fixedDayCount, floatSchedule, iborIndex_,
-            floatSpread_, floatDayCount_, ext::nullopt, useIndexedCoupons_));
+            floatSpread_, floatDayCount_, paymentConvention_, useIndexedCoupons_));
 
         if (engine_ == nullptr) {
             Handle<YieldTermStructure> disc =
@@ -217,13 +214,19 @@ namespace QuantLib {
     MakeVanillaSwap&
     MakeVanillaSwap::withTerminationDate(const Date& terminationDate) {
         terminationDate_ = terminationDate;
-        swapTenor_ = Period();
+        if (terminationDate != Date())
+            swapTenor_ = Period();
         return *this;
     }
 
     MakeVanillaSwap& MakeVanillaSwap::withRule(DateGeneration::Rule r) {
         fixedRule_ = r;
         floatRule_ = r;
+        return *this;
+    }
+
+    MakeVanillaSwap& MakeVanillaSwap::withPaymentConvention(BusinessDayConvention bdc) {
+        paymentConvention_ = bdc;
         return *this;
     }
 

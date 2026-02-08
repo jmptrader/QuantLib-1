@@ -8,14 +8,14 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "amortizingbond.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/instruments/bonds/amortizingfixedratebond.hpp>
 #include <ql/cashflows/fixedratecoupon.hpp>
@@ -31,7 +31,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void AmortizingBondTest::testAmortizingFixedRateBond() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(AmortizingBondTests)
+
+BOOST_AUTO_TEST_CASE(testAmortizingFixedRateBond) {
     BOOST_TEST_MESSAGE("Testing amortizing fixed rate bond...");
 
     /*
@@ -50,7 +54,7 @@ void AmortizingBondTest::testAmortizingFixedRateBond() {
 
     const Real tolerance = 1.0e-6;
 
-    for (Size i=0; i<LENGTH(rates); ++i) {
+    for (Size i=0; i<std::size(rates); ++i) {
 
         auto schedule = sinkingSchedule(refDate, Period(30, Years), freq, NullCalendar());
         auto notionals = sinkingNotionals(Period(30, Years), freq, rates[i], 100.0);
@@ -58,7 +62,7 @@ void AmortizingBondTest::testAmortizingFixedRateBond() {
         AmortizingFixedRateBond myBond(0, notionals, schedule, {rates[i]},
                                        ActualActual(ActualActual::ISMA));
 
-        Leg cashflows = myBond.cashflows();
+        const Leg& cashflows = myBond.cashflows();
 
         for (Size k=0; k < cashflows.size() / 2; ++k) {
             Real coupon = cashflows[2*k]->amount();
@@ -93,7 +97,7 @@ void AmortizingBondTest::testAmortizingFixedRateBond() {
     }
 }
 
-void AmortizingBondTest::testBrazilianAmortizingFixedRateBond() {
+BOOST_AUTO_TEST_CASE(testBrazilianAmortizingFixedRateBond) {
     BOOST_TEST_MESSAGE("Testing Brazilian amortizing fixed rate bond...");
 
     /*
@@ -155,7 +159,10 @@ void AmortizingBondTest::testBrazilianAmortizingFixedRateBond() {
         1.38600825, 1.23425366, 1.39521333, 1.06968563,
         1.03950542, 1.00065409, 0.90968563, 0.81871706,
         0.79726493, 0.63678002, 0.57187676, 0.49829046,
-        0.32913418, 0.27290565, 0.19062560, 0.08662552
+        // data changed as source (pentagonotrustee.com.br) does not include newly introduced
+        // "Black Awareness Day" holiday
+        0.31177086,
+                    0.27290565, 0.19062560, 0.08662552
     };
 
     Natural settlementDays = 0;
@@ -189,7 +196,7 @@ void AmortizingBondTest::testBrazilianAmortizingFixedRateBond() {
 
     const Real tolerance = 1.0e-6;
     Real error;
-    Leg cashflows = risf11.cashflows();
+    const Leg& cashflows = risf11.cashflows();
     for (Size k=0; k < cashflows.size() / 2; ++k) {
         error = std::fabs(expected_coupons[k] - cashflows[2*k]->amount());
         if(error > tolerance) {
@@ -213,7 +220,7 @@ void AmortizingBondTest::testBrazilianAmortizingFixedRateBond() {
 
 }
 
-void AmortizingBondTest::testAmortizingFixedRateBondWithDrawDown() {
+BOOST_AUTO_TEST_CASE(testAmortizingFixedRateBondWithDrawDown) {
     BOOST_TEST_MESSAGE("Testing amortizing fixed rate bond with draw-down...");
 
     Date issueDate = Date(19, May, 2012);
@@ -273,10 +280,6 @@ void AmortizingBondTest::testAmortizingFixedRateBondWithDrawDown() {
 
 }
 
-test_suite* AmortizingBondTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Amortizing Bond tests");
-    suite->add(QUANTLIB_TEST_CASE(&AmortizingBondTest::testAmortizingFixedRateBond));
-    suite->add(QUANTLIB_TEST_CASE(&AmortizingBondTest::testBrazilianAmortizingFixedRateBond));
-    suite->add(QUANTLIB_TEST_CASE(&AmortizingBondTest::testAmortizingFixedRateBondWithDrawDown));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

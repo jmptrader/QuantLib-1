@@ -15,7 +15,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -29,6 +29,7 @@
 #ifndef quantlib_cubic_interpolation_hpp
 #define quantlib_cubic_interpolation_hpp
 
+#include <algorithm>
 #include <ql/math/matrix.hpp>
 #include <ql/math/interpolation.hpp>
 #include <ql/methods/finitedifferences/tridiagonaloperator.hpp>
@@ -700,9 +701,11 @@ namespace QuantLib {
                         } else {
                             pm=(S_[i-1]*dx_[i]+S_[i]*dx_[i-1])/
                                 (dx_[i-1]+dx_[i]);
-                            M = 3.0 * std::min(std::min(std::fabs(S_[i-1]),
-                                                        std::fabs(S_[i])),
-                                               std::fabs(pm));
+                            M = 3.0 * std::min({
+                                    std::fabs(S_[i-1]),
+                                    std::fabs(S_[i]),
+                                    std::fabs(pm)
+                                });
                             if (i>1) {
                                 if ((S_[i-1]-S_[i-2])*(S_[i]-S_[i-1])>0.0) {
                                     pd=(S_[i-1]*(2.0*dx_[i-1]+dx_[i-2])
@@ -787,7 +790,7 @@ namespace QuantLib {
             mutable std::vector<Real> dx_, S_;
             mutable TridiagonalOperator L_;
 
-            inline Real cubicInterpolatingPolynomialDerivative(
+            Real cubicInterpolatingPolynomialDerivative(
                                Real a, Real b, Real c, Real d,
                                Real u, Real v, Real w, Real z, Real x) const {
                 return (-((((a-c)*(b-c)*(c-x)*z-(a-d)*(b-d)*(d-x)*w)*(a-x+b-x)

@@ -11,7 +11,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -51,7 +51,6 @@ namespace QuantLib {
                  const std::string& fractionSymbol,
                  Integer fractionsPerUnit,
                  const Rounding& rounding,
-                 const std::string& formatString,
                  const Currency& triangulationCurrency = Currency(),
                  const std::set<std::string>& minorUnitCodes = {});
         //@}
@@ -71,11 +70,6 @@ namespace QuantLib {
         Integer fractionsPerUnit() const;
         //! rounding convention
         const Rounding& rounding() const;
-        //! output format
-        /*! The format will be fed three positional parameters,
-            namely, value, code, and symbol, in this order.
-        */
-        std::string format() const;
         //@}
         //! \name Other information
         //@{
@@ -100,7 +94,6 @@ namespace QuantLib {
         Integer fractionsPerUnit;
         Rounding rounding;
         Currency triangulated;
-        std::string formatString;
         std::set<std::string> minorUnitCodes;
 
         Data(std::string name,
@@ -110,10 +103,10 @@ namespace QuantLib {
              std::string fractionSymbol,
              Integer fractionsPerUnit,
              const Rounding& rounding,
-             std::string formatString,
              Currency triangulationCurrency = Currency(),
              std::set<std::string> minorUnitCodes = {});
     };
+
 
     /*! \relates Currency */
     bool operator==(const Currency&,
@@ -167,11 +160,6 @@ namespace QuantLib {
     inline const Rounding& Currency::rounding() const {
         checkNonEmpty();
         return data_->rounding;
-    }
-
-    inline std::string Currency::format() const {
-        checkNonEmpty();
-        return data_->formatString;
     }
 
     inline bool Currency::empty() const {

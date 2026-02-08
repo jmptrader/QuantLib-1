@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -40,7 +40,14 @@
 #undef VERSION
 #endif
 
+#if BOOST_VERSION >= 108800
+#include <boost/process/v1/system.hpp>
+#include <boost/process/v1/args.hpp>
+namespace bp = boost::process::v1;
+#else
 #include <boost/process.hpp>
+namespace bp = boost::process;
+#endif
 #include <boost/algorithm/string.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
@@ -63,7 +70,6 @@
 using boost::unit_test::test_results;
 using namespace boost::interprocess;
 using namespace boost::unit_test_framework;
-namespace bp = boost::process;
 
 
 namespace {
@@ -87,8 +93,9 @@ namespace {
 
         bool visit(test_unit const& tu) {
             if (tu.p_parent_id == framework::master_test_suite().p_id) {
-                QL_REQUIRE(!tu.p_name.get().compare("QuantLib test suite"),
-                     "could not find QuantLib test suite");
+                BOOST_TEST_MESSAGE(tu.p_name.get());
+                QL_REQUIRE(!tu.p_name.get().compare("QuantLibTests"),
+                           "could not find QuantLib test suite");
 
                 testSuiteId_ = tu.p_id;
             }

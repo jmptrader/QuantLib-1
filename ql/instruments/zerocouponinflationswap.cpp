@@ -12,7 +12,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -54,7 +54,7 @@ namespace QuantLib {
       infCalendar_(std::move(infCalendar)), infConvention_(infConvention),
       dayCounter_(std::move(dayCounter)) {
         // first check compatibility of index and swap definitions
-        if (detail::CPI::effectiveInterpolationType(infIndex_, observationInterpolation_) == CPI::Linear) {
+        if (detail::CPI::effectiveInterpolationType(observationInterpolation_) == CPI::Linear) {
             Period pShift(infIndex_->frequency());
             QL_REQUIRE(observationLag_ - pShift >= infIndex_->availabilityLag(),
                        "inconsistency between swap observation lag "
@@ -91,7 +91,7 @@ namespace QuantLib {
         // term structure before allowing users to create instruments.
         Real T =
             inflationYearFraction(infIndex_->frequency(),
-                                  detail::CPI::isInterpolated(infIndex_, observationInterpolation_),
+                                  detail::CPI::isInterpolated(observationInterpolation_),
                                   dayCounter_, baseDate_, obsDate_);
         // N.B. the -1.0 is because swaps only exchange growth, not notionals as well
         Real fixedAmount = nominal * (std::pow(1.0 + fixedRate, T) - 1.0);
@@ -132,7 +132,7 @@ namespace QuantLib {
         Real growth = icf->amount() / icf->notional() + 1.0;
         Real T =
             inflationYearFraction(infIndex_->frequency(),
-                                  detail::CPI::isInterpolated(infIndex_, observationInterpolation_),
+                                  detail::CPI::isInterpolated(observationInterpolation_),
                                   dayCounter_, baseDate_, obsDate_);
 
         return std::pow(growth,1.0/T) - 1.0;
@@ -143,6 +143,25 @@ namespace QuantLib {
         //      maturityDate(), observationLag(), infIndex_->interpolated());
     }
 
+    Real ZeroCouponInflationSwap::fixedLegBPS() const {
+        // legBPS_[0] is 0, because fixed leg uses a SimpleCashFlow. BPSCalculator assumes
+        // that simple cashflows are not sensitive to fixedRate. We could change that to a
+        // FixedRateCoupon, however BPSCalculator also assumes that all coupons are linear
+        // in fixedRate. Our fixed leg uses annual compounding, so it does not compute the
+        // right number.
+        calculate();
+        QL_REQUIRE(endDiscounts_[0] != Null<DiscountFactor>(),
+                   "cannot calculate fixedLegBPS because end discount is not populated");
+
+        const Spread basisPoint = 1.0e-4;
+        DiscountFactor df = payer_[0] * endDiscounts_[0];
+        Real T =
+            inflationYearFraction(infIndex_->frequency(),
+                                  detail::CPI::isInterpolated(observationInterpolation_),
+                                  dayCounter_, baseDate_, obsDate_);
+
+        return df * nominal_ * (pow(1.0 + fixedRate_ + basisPoint, T) - pow(1.0 + fixedRate_, T));
+    }
 
     Real ZeroCouponInflationSwap::fixedLegNPV() const {
         calculate();

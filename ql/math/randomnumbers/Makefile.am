@@ -5,6 +5,7 @@ this_includedir=${includedir}/${subdir}
 this_include_HEADERS = \
 	all.hpp \
 	boxmullergaussianrng.hpp \
+	burley2020sobolrsg.hpp \
 	centrallimitgaussianrng.hpp \
 	faurersg.hpp \
 	haltonrsg.hpp \
@@ -24,11 +25,13 @@ this_include_HEADERS = \
 	sobolbrownianbridgersg.hpp \
 	sobolrsg.hpp \
 	stochasticcollocationinvcdf.hpp \
-	xoshiro256starstaruniformrng.hpp
+	xoshiro256starstaruniformrng.hpp \
+	zigguratgaussianrng.hpp
 
 cpp_files = \
-    faurersg.cpp \
-    haltonrsg.cpp \
+	faurersg.cpp \
+	haltonrsg.cpp \
+	burley2020sobolrsg.cpp \
 	knuthuniformrng.cpp \
 	latticersg.cpp \
 	latticerules.cpp \

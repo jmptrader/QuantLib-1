@@ -10,37 +10,42 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "gjrgarchmodel.hpp"
+#include "preconditions.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/processes/gjrgarchprocess.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
+#include <ql/math/optimization/simplex.hpp>
 #include <ql/models/equity/gjrgarchmodel.hpp>
 #include <ql/models/equity/hestonmodelhelper.hpp>
+#include <ql/pricingengines/blackformula.hpp>
 #include <ql/pricingengines/vanilla/analyticgjrgarchengine.hpp>
 #include <ql/pricingengines/vanilla/mceuropeangjrgarchengine.hpp>
-#include <ql/pricingengines/blackformula.hpp>
-#include <ql/time/calendars/target.hpp>
-#include <ql/time/calendars/nullcalendar.hpp>
-#include <ql/time/daycounters/actual365fixed.hpp>
-#include <ql/time/daycounters/actual360.hpp>
-#include <ql/time/daycounters/actualactual.hpp>
-#include <ql/termstructures/yield/zerocurve.hpp>
-#include <ql/termstructures/yield/flatforward.hpp>
-#include <ql/math/optimization/simplex.hpp>
-#include <ql/time/period.hpp>
+#include <ql/processes/gjrgarchprocess.hpp>
 #include <ql/quotes/simplequote.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
+#include <ql/termstructures/yield/zerocurve.hpp>
+#include <ql/time/calendars/nullcalendar.hpp>
+#include <ql/time/calendars/target.hpp>
+#include <ql/time/daycounters/actual360.hpp>
+#include <ql/time/daycounters/actual365fixed.hpp>
+#include <ql/time/daycounters/actualactual.hpp>
+#include <ql/time/period.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void GJRGARCHModelTest::testEngines() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTests, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(GJRGARCHModelTests)
+
+BOOST_AUTO_TEST_CASE(testEngines, *precondition(if_speed(Slow))) {
     BOOST_TEST_MESSAGE(
        "Testing Monte Carlo GJR-GARCH engine against "
        "analytic GJR-GARCH engine...");
@@ -192,8 +197,7 @@ void GJRGARCHModelTest::testEngines() {
     }
 }
 
-
-void GJRGARCHModelTest::testDAXCalibration() {
+BOOST_AUTO_TEST_CASE(testDAXCalibration, *precondition(if_speed(Fast))) {
     /* this example is taken from A. Sepp
        Pricing European-Style Options under Jump Diffusion Processes
        with Stochstic Volatility: Applications of Fourier Transform
@@ -301,16 +305,6 @@ void GJRGARCHModelTest::testDAXCalibration() {
     }
 }
 
-test_suite* GJRGARCHModelTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("GJR-GARCH model tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    if (speed <= Fast) {
-        suite->add(QUANTLIB_TEST_CASE(&GJRGARCHModelTest::testDAXCalibration));
-    }
-
-    if (speed == Slow) {
-        suite->add(QUANTLIB_TEST_CASE(&GJRGARCHModelTest::testEngines));
-    }
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

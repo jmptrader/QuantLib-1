@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -31,9 +31,6 @@
 namespace QuantLib {
 
     //! Probability formulas and algorithms
-    /*!
-      \ingroup probability
-    */ 
     class LossDist {
     public:
       LossDist() = default;
@@ -95,9 +92,6 @@ namespace QuantLib {
     };
 
     //! Binomial loss distribution
-    /*! Binomial loss distribution
-      \ingroup probability
-    */
     class LossDistBinomial : public LossDist {
     public:
         LossDistBinomial (Size nBuckets, Real maximum)
@@ -140,8 +134,6 @@ namespace QuantLib {
 
       John Hull and Alan White, "Valuation of a CDO and nth to default CDS 
       without Monte Carlo simulation", Journal of Derivatives 12, 2, 2004 
-
-      \ingroup probability
      */
     class LossDistHomogeneous : public LossDist {
     public:
@@ -174,8 +166,6 @@ namespace QuantLib {
 
       John Hull and Alan White, "Valuation of a CDO and nth to default CDS 
       without Monte Carlo simulation", Journal of Derivatives 12, 2, 2004. 
-
-      \ingroup probability
     */
     class LossDistBucketing : public LossDist {
     public:
@@ -199,8 +189,6 @@ namespace QuantLib {
     /*!
       Loss distribution for varying volumes and probabilities of default
       via Monte Carlo simulation of independent default events.
-
-      \ingroup probability
     */
     class LossDistMonteCarlo : public LossDist {
     public:

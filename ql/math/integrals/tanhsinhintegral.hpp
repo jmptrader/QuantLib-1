@@ -10,7 +10,7 @@
  under the terms of the QuantLib license.  You should have received a
  copy of the license along with this program; if not, please email
  <quantlib-dev@lists.sf.net>. The license is also available online at
- <http://quantlib.org/license.shtml>.
+ <https://www.quantlib.org/license.shtml>.
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -34,8 +34,6 @@
 #include <limits>
 
 namespace QuantLib {
-    using tanh_sinh = boost::math::quadrature::tanh_sinh<Real>;
-
     /*! The tanh-sinh quadrature routine provided by boost is a rapidly convergent
         numerical integration scheme for holomorphic integrands. The tolerance
         is used against the error estimate for the L1 norm of the integral.
@@ -52,10 +50,15 @@ namespace QuantLib {
         tanh_sinh_(maxRefinements, minComplement) {}
 
       protected:
-        Real integrate(const ext::function<Real(Real)>& f, Real a, Real b)
+        Real integrate(const std::function<Real(Real)>& f, Real a, Real b)
         const override {
             Real error;
-            Real value = tanh_sinh_.integrate(f, a, b, relTolerance_, &error);
+            Real value = tanh_sinh_.integrate(
+                [this, f](Real x)-> Real {
+                    increaseNumberOfEvaluations(1);
+                    return f(x);
+                },
+                a, b, relTolerance_, &error);
             setAbsoluteError(error);
 
             return value;
@@ -63,7 +66,7 @@ namespace QuantLib {
 
       private:
         const Real relTolerance_;
-        mutable tanh_sinh tanh_sinh_;
+        mutable boost::math::quadrature::tanh_sinh<Real> tanh_sinh_;
     };
 }
 
@@ -79,8 +82,9 @@ namespace QuantLib {
         }
 
       protected:
-        Real integrate(const ext::function<Real(Real)>& f, Real a, Real b)
-        const override { return 0.0; }
+        Real integrate(const std::function<Real(Real)>& f, Real a, Real b) const override {
+            QL_FAIL("boost version 1.69 or higher is required in order to use TanhSinhIntegral");
+        }
     };
 
 }
